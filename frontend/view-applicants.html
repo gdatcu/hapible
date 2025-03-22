@@ -11,6 +11,16 @@
 
   <div class="container mt-5">
     <h2 class="text-center mb-4">All Applicants for All Jobs</h2>
+    <div class="d-flex justify-content-end mb-3">
+      <select id="statusFilter" class="form-select w-auto">
+        <option value="">🔍 Filter by Status</option>
+        <option value="pending">⏳ Pending</option>
+        <option value="reviewed">📝 Reviewed</option>
+        <option value="accepted">✅ Accepted</option>
+        <option value="rejected">❌ Rejected</option>
+      </select>
+    </div>
+    
     <div id="applicantList"></div>
   </div>
 
@@ -56,23 +66,65 @@
         .then(res => res.json())
         .then(apps => {
           const list = document.getElementById("applicantList");
-          if (apps.length === 0) {
-            list.innerHTML = `<div class="alert alert-info text-center">No applications found.</div>`;
+          const selectedStatus = document.getElementById("statusFilter").value;
+    
+          // Filter applications based on the selected status
+          const filteredApps = selectedStatus
+          ? apps.filter(app => app.status?.trim().toLowerCase() === selectedStatus.toLowerCase())
+          : apps;
+    
+          if (filteredApps.length === 0) {
+            list.innerHTML = `<div class="alert alert-info text-center">No applications found for the selected status.</div>`;
             return;
           }
     
-          list.innerHTML = apps.map(app => `
-  <div class="card mb-3 shadow-sm">
-    <div class="card-body">
-      <h5 class="card-title">Job ID: ${app.job_id}</h5>
-      <p class="card-text">Message: ${app.message}</p>
-      <p class="text-muted">From User ID: ${app.user_id} | App ID: ${app.id}</p>
-      <button class="btn btn-sm btn-danger" onclick="deleteApplication(${app.id})">Delete Application</button>
-    </div>
-  </div>
-`).join("");
+          // Render the filtered applications
+          list.innerHTML = filteredApps.map(app => {
+            const resumePath = app.resume?.replace(/\\/g, "/").replace(/^.*\/uploads/, "/hapible/uploads");
+            const hasResume = !!app.resume;
+    
+            const statusOptions = ["pending", "reviewed", "accepted", "rejected"]
+              .map(status => `<option value="${status}" ${app.status === status ? 'selected' : ''}>
+                ${status.charAt(0).toUpperCase() + status.slice(1)}
+              </option>`)
+              .join("");
+    
+            return `
+              <div class="card mb-3 shadow-sm">
+                <div class="card-body">
+                  <h5 class="card-title">Job ID: ${app.job_id} - ${app.job_title || ''}</h5>
+                  <p class="card-text">Message: ${app.message}</p>
+                  <p class="text-muted">From User ID: ${app.user_id} | App ID: ${app.id}</p>
+                  <p>
+                    Status: 
+                    <select onchange="updateApplicationStatus(${app.id}, this.value)">
+                      ${statusOptions}
+                    </select>
+                  </p>
+                  ${hasResume ? `
+                    <div class="d-flex gap-2 flex-wrap mt-2">
+                      <button class="btn btn-outline-primary btn-sm" onclick="previewResume('${resumePath}')">👁️ Preview Resume</button>
+                      <a class="btn btn-outline-success btn-sm" href="${resumePath}" download onclick="logDownload(${app.id})">⬇️ Download Resume</a>
+                    </div>` 
+                    : `<p class="text-muted">No resume uploaded</p>`}
+                  <button class="btn btn-sm btn-danger mt-2" onclick="deleteApplication(${app.id})">Delete Application</button>
+                </div>
+              </div>
+            `;
+          }).join("");
+        })
+        .catch(err => {
+          console.error(err);
+          alert("Failed to load applications.");
         });
     }
+    
+    // Attach the loadApplicants function to the filter's change event
+    document.getElementById("statusFilter").addEventListener("change", loadApplicants);
+    
+    
+    
+
 
     function deleteApplication(id) {
       if (!confirm("Are you sure you want to delete this application?")) return;
@@ -94,6 +146,63 @@
         alert("Something went wrong.");
       });
     }
+
+    function previewResume(url) {
+      document.getElementById("resumeFrame").src = url;
+      const modal = new bootstrap.Modal(document.getElementById("resumeModal"));
+      modal.show();
+    }
+    
+    function logDownload(appId) {
+      const decoded = atob(localStorage.getItem("token"));
+      const [userId] = decoded.split(":");
+    
+      fetch("/hapible/api/apply?logDownload=true", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          application_id: appId
+        })
+      })
+      .then(res => res.text()) // ⬅ show raw response instead of assuming JSON
+      .then(text => {
+        console.log("Server responded with:", text);
+        try {
+          const data = JSON.parse(text);
+          console.log("Parsed JSON:", data);
+        } catch (err) {
+          console.error("❌ Not valid JSON!", err);
+        }
+      });
+    }
+
+    function updateApplicationStatus(appId, status) {
+      fetch("/hapible/api/apply?updateStatus=true", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ application_id: appId, status })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          console.log(`✅ Status updated: ${status}`);
+          // Optionally, reload the applicants to reflect the updated status
+          loadApplicants();
+        } else {
+          alert(data.error || "Failed to update status");
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        alert("An error occurred while updating the status.");
+      });
+    }
+    
+  
+   
     
 
     function logout() {
@@ -101,5 +210,25 @@
       window.location.href = "login.html";
     }
   </script>
+
+  <!-- Resume Preview Modal -->
+<div class="modal fade" id="resumeModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Resume Preview</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" style="height: 80vh;">
+        <iframe id="resumeFrame" style="width: 100%; height: 100%;" frameborder="0"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bootstrap JS Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  
 </body>
 </html>

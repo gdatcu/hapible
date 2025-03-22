@@ -11,6 +11,16 @@
 
   <div class="container mt-5">
     <h2 class="text-center mb-4">My Job Applications</h2>
+    <div class="d-flex justify-content-end align-items-center gap-2 mb-3">
+      <select id="statusFilter" class="form-select w-auto">
+        <option value="">🔎 Filter by Status</option>
+        <option value="pending">⏳ Pending</option>
+        <option value="accepted">✅ Accepted</option>
+        <option value="rejected">❌ Rejected</option>
+      </select>
+      <button id="clearFilter" class="btn btn-outline-secondary btn-sm">Clear Filter</button>
+    </div>
+    
     <div id="applicationList"></div>
   </div>
 
@@ -46,26 +56,61 @@
 
     function loadApplications() {
       const [userId] = atob(token).split(":");
-      fetch(`/hapible/api/apply?user_id=${userId}`) // 🔓 IDOR vulnerability
+    
+      fetch(`/hapible/api/apply?user_id=${userId}`)
         .then(res => res.json())
         .then(applications => {
           const list = document.getElementById("applicationList");
-          if (applications.length === 0) {
+          const filterValue = document.getElementById("statusFilter").value;
+    
+          if (!Array.isArray(applications)) {
+            list.innerHTML = `<div class="alert alert-danger">Something went wrong. Try again later.</div>`;
+            return;
+          }
+    
+          // Apply filter
+          const filtered = filterValue
+            ? applications.filter(app => app.status === filterValue)
+            : applications;
+    
+          if (filtered.length === 0) {
             list.innerHTML = `<div class="alert alert-info text-center">No applications found.</div>`;
             return;
           }
-
-          list.innerHTML = applications.map(app => `
-            <div class="card mb-3 shadow-sm">
-              <div class="card-body">
-                <h5 class="card-title">Applied to Job ID: ${app.job_id}</h5>
-                <p class="card-text">${app.message}</p>
-                <p class="text-muted">Application ID: ${app.id}</p>
+    
+          filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    
+          list.innerHTML = filtered.map(app => {
+            let statusColor = "secondary";
+            if (app.status === "accepted") statusColor = "success";
+            else if (app.status === "rejected") statusColor = "danger";
+    
+            return `
+              <div class="card mb-3 shadow-sm">
+                <div class="card-body">
+                  <h5 class="card-title d-flex justify-content-between align-items-center">
+                    ${app.job_title || `Job ID: ${app.job_id}`}
+                    <span class="badge bg-${statusColor} text-uppercase">${app.status || "pending"}</span>
+                  </h5>
+                  <p class="card-text">${app.message}</p>
+                  <p class="text-muted">Applied on: ${new Date(app.created_at).toLocaleDateString()}</p>
+                </div>
               </div>
-            </div>
-          `).join("");
+            `;
+          }).join("");
         });
     }
+    
+    // Add handlers
+  
+    document.getElementById("statusFilter").addEventListener("change", loadApplications);
+    document.getElementById("clearFilter").addEventListener("click", () => {
+      document.getElementById("statusFilter").value = "";
+      loadApplications();
+    });
+
+    
+    
 
     function logout() {
       localStorage.removeItem("token");
