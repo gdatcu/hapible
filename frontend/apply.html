@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Apply for a Job</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+  <div id="navbar-placeholder"></div>
+
+  <div class="container mt-5">
+    <h2 class="text-center mb-4">Available Jobs</h2>
+    <!-- Filters -->
+<div class="mb-4">
+  <div class="mb-3">
+    <label for="statusFilter" class="fw-bold">Filter Jobs:</label>
+    <select id="statusFilter" class="form-select d-inline w-auto">
+      <option value="all">All Jobs</option>
+      <option value="active">Active Only</option>
+      <option value="inactive">Inactive Only</option>
+      <option value="expired">Expired Only</option>
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label for="search" class="fw-bold">Search by Title or Company:</label>
+    <input type="text" id="search" class="form-control" placeholder="Search jobs..." />
+  </div>
+
+  <div class="mb-3">
+    <label for="dateRange" class="fw-bold">Date Range (Creation & Expiry):</label>
+    <input type="date" id="startDate" class="form-control" />
+    <input type="date" id="endDate" class="form-control mt-2" />
+  </div>
+
+  <div class="mb-3">
+    <button id="clearFilters" class="btn btn-warning">Clear Filters</button>
+  </div>
+
+  <div class="mb-3 text-end">
+    <label for="sortOrder" class="fw-bold">Sort Jobs By:</label>
+    <select id="sortOrder" class="form-select d-inline w-auto">
+      <option value="date_asc">Date: Oldest First</option>
+      <option value="date_desc">Date: Newest First</option>
+      <option value="title_asc">Title: A-Z</option>
+      <option value="title_desc">Title: Z-A</option>
+    </select>
+  </div>
+</div>
+
+<div id="paginationControls" class="mt-3">
+  <button id="prevPage" class="btn btn-secondary" disabled>Previous</button>
+  <span id="currentPageLabel" class="mx-3">Page 1</span>
+  <button id="nextPage" class="btn btn-secondary">Next</button>
+</div>
+
+<!-- Job Listings -->
+<div id="jobList" class="mt-4"></div>
+
+    <div id="applyContainer" class="d-none">
+  <h3 class="text-center mb-3">Apply to Job #<span id="selectedJobId"></span></h3>
+  <form id="applyForm" class="p-4 bg-white rounded shadow" enctype="multipart/form-data">
+    <input type="hidden" id="jobId" name="job_id">
+    <div class="mb-3">
+      <label class="form-label">Message</label>
+      <textarea name="message" id="message" class="form-control" rows="4" required></textarea>
+    </div>
+
+    <!-- ✅ Resume upload input -->
+  <div class="mb-3">
+    <label for="resume" class="form-label">Upload Resume (or Cover Letter)</label>
+    <input type="file" class="form-control" id="resume" name="resume" />
+  </div>
+
+
+    <button type="submit" class="btn btn-success w-100">Submit Application</button>
+  </form>
+</div>
+
+  <script>
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Please log in.");
+      window.location.href = "login.html";
+    }
+
+    fetch("navbar.html")
+      .then(res => res.text())
+      .then(html => {
+        document.getElementById("navbar-placeholder").innerHTML = html;
+        showUserInfo();
+      });
+
+    function showUserInfo() {
+      try {
+        const decoded = atob(token);
+        const [userId, role] = decoded.split(":");
+        fetch(`/hapible/api/users?id=${userId}`)
+          .then(res => res.json())
+          .then(user => {
+            const userInfoEl = document.getElementById("user-info");
+            if (userInfoEl) userInfoEl.textContent = `${user.name} (${role})`;
+          });
+      } catch (err) {
+        console.error("Invalid token");
+      }
+    }
+
+    function loadJobs() {
+      const savedFilter = localStorage.getItem("jobFilter") || "all";
+      const searchQuery = localStorage.getItem("searchQuery") || "";
+      const startDate = localStorage.getItem("startDate") || "";
+      const endDate = localStorage.getItem("endDate") || "";
+      const sortOrder = localStorage.getItem("sortOrder") || "date_desc";
+      const currentPage = parseInt(localStorage.getItem("currentPage")) || 1;
+      
+      const jobsPerPage = 10; // Set number of jobs per page
+    
+      // Update the filters on page load
+      document.getElementById("statusFilter").value = savedFilter;
+      document.getElementById("search").value = searchQuery;
+      document.getElementById("startDate").value = startDate;
+      document.getElementById("endDate").value = endDate;
+      document.getElementById("sortOrder").value = sortOrder;
+    
+      fetch("/hapible/api/jobs")
+        .then(res => res.json())
+        .then(jobs => {
+          const filter = document.getElementById("statusFilter").value;
+          const search = document.getElementById("search").value.toLowerCase();
+          const start = document.getElementById("startDate").value;
+          const end = document.getElementById("endDate").value;
+          const sort = document.getElementById("sortOrder").value;
+    
+          // Filter jobs based on status
+          const filteredJobs = jobs.filter(job => {
+            const isExpired = job.expires_at && new Date(job.expires_at) < new Date();
+            const isSearchMatch = job.title.toLowerCase().includes(search) || job.company_name.toLowerCase().includes(search);
+            const isDateMatch = (!start || new Date(job.created_at) >= new Date(start)) &&
+                                (!end || new Date(job.expires_at) <= new Date(end));
+    
+            let statusMatch = false;
+            if (filter === "active") statusMatch = job.status === "active" && !isExpired;
+            else if (filter === "inactive") statusMatch = job.status === "inactive";
+            else if (filter === "expired") statusMatch = isExpired;
+            else statusMatch = true; // "all" jobs
+    
+            return statusMatch && isSearchMatch && isDateMatch;
+          });
+    
+          // Sorting logic
+          if (sort === "date_asc") {
+            filteredJobs.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+          } else if (sort === "date_desc") {
+            filteredJobs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+          } else if (sort === "title_asc") {
+            filteredJobs.sort((a, b) => a.title.localeCompare(b.title));
+          } else if (sort === "title_desc") {
+            filteredJobs.sort((a, b) => b.title.localeCompare(a.title));
+          }
+    
+          // Apply pagination
+          const totalJobs = filteredJobs.length;
+          const startIndex = (currentPage - 1) * jobsPerPage;
+          const endIndex = startIndex + jobsPerPage;
+          const jobsToDisplay = filteredJobs.slice(startIndex, endIndex);
+    
+          // Render jobs
+          const jobList = document.getElementById("jobList");
+          if (jobsToDisplay.length === 0) {
+            jobList.innerHTML = `<div class="alert alert-info text-center">No jobs match your filters.</div>`;
+            return;
+          }
+    
+          jobList.innerHTML = jobsToDisplay.map(job => {
+            const isExpired = job.expires_at && new Date(job.expires_at) < new Date();
+            let displayStatus = "", badgeColor = "";
+    
+            if (job.status === 'inactive') {
+              displayStatus = "Inactive";
+              badgeColor = "secondary";
+            } else if (isExpired) {
+              displayStatus = "Expired";
+              badgeColor = "danger";
+            } else {
+              displayStatus = "Active";
+              badgeColor = "success";
+            }
+    
+            return `
+              <div class="card mb-3 shadow-sm">
+                <div class="card-body">
+                  <h5 class="card-title d-flex justify-content-between align-items-center">
+                    ${job.title}
+                    <span class="badge bg-${badgeColor}">${displayStatus}</span>
+                  </h5>
+                  <p class="card-text">${job.description}</p>
+                  <p class="text-muted">
+                    Posted on: <span class="text-muted fw-bold">${new Date(job.created_at).toLocaleDateString()}</span><br>
+                    Expires: <span class="text-danger fw-bold">${job.expires_at ? new Date(job.expires_at).toLocaleDateString() : "—"}</span><br>
+                    Company: <span class="text-primary fw-bold">${job.company_name || "—"}</span>
+                  </p>
+                  <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-warning" onclick="editJob(${job.id}, '${job.title}', \`${job.description.replace(/`/g, "\\`")}\`)">Edit</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteJob(${job.id})">Delete</button>
+                    <button class="btn btn-sm ${job.status === 'active' ? 'btn-secondary' : 'btn-success'}" onclick="changeJobStatus(${job.id}, '${job.status === 'active' ? 'inactive' : 'active'}')">
+                      ${job.status === 'active' ? 'Inactivate' : 'Reactivate'}
+                    </button>
+                    ${isExpired ? `<button class="btn btn-sm btn-info" onclick="renewJob(${job.id})">Renew</button>` : ''}
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join("");
+    
+          // Pagination controls
+          const prevButton = document.getElementById("prevPage");
+          const nextButton = document.getElementById("nextPage");
+          const currentPageLabel = document.getElementById("currentPageLabel");
+    
+          currentPageLabel.innerText = `Page ${currentPage}`;
+          prevButton.disabled = currentPage === 1;
+          nextButton.disabled = currentPage * jobsPerPage >= totalJobs;
+    
+          // Handle next and previous page buttons
+          prevButton.addEventListener("click", () => {
+            localStorage.setItem("currentPage", currentPage - 1);
+            loadJobs();
+          });
+    
+          nextButton.addEventListener("click", () => {
+            localStorage.setItem("currentPage", currentPage + 1);
+            loadJobs();
+          });
+        });
+    }
+ 
+   
+
+    function selectJob(id) {
+  document.getElementById("applyContainer").classList.remove("d-none");
+  document.getElementById("jobId").value = id;
+  document.getElementById("selectedJobId").textContent = id;
+  document.getElementById("message").focus();
+}
+
+    document.getElementById("applyForm").addEventListener("submit", function (event) {
+      event.preventDefault();
+
+      const decoded = atob(token);
+      const [userId] = decoded.split(":");
+      const formData = new FormData(this);
+      formData.append("user_id", userId); // 🔓 Mass assignment possible
+
+      fetch("/hapible/api/apply", {
+        method: "POST",
+        body: formData
+      })
+        .then(res => res.json())
+        .then(data => {
+          alert("Application submitted!");
+			this.reset();
+			document.getElementById("applyContainer").classList.add("d-none");
+        });
+    });
+
+    loadJobs();
+
+    // Add filter event listener
+    
+    // Save status filter
+document.getElementById("statusFilter").addEventListener("change", function () {
+  localStorage.setItem("jobFilter", this.value);
+  loadJobs();
+});
+
+// Save search query
+document.getElementById("search").addEventListener("input", function () {
+  localStorage.setItem("searchQuery", this.value);
+  loadJobs();
+});
+
+// Save start and end date range
+document.getElementById("startDate").addEventListener("change", function () {
+  localStorage.setItem("startDate", this.value);
+  loadJobs();
+});
+
+document.getElementById("endDate").addEventListener("change", function () {
+  localStorage.setItem("endDate", this.value);
+  loadJobs();
+});
+
+// Save sorting order
+document.getElementById("sortOrder").addEventListener("change", function () {
+  localStorage.setItem("sortOrder", this.value);
+  loadJobs();
+});
+
+// Clear filters
+document.getElementById("clearFilters").addEventListener("click", function () {
+  localStorage.removeItem("jobFilter");
+  localStorage.removeItem("searchQuery");
+  localStorage.removeItem("startDate");
+  localStorage.removeItem("endDate");
+  localStorage.removeItem("sortOrder");
+  localStorage.setItem("currentPage", 1); // Reset to first page
+  loadJobs();
+});
+
+
+
+    function logout() {
+      localStorage.removeItem("token");
+      window.location.href = "login.html";
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+    <!-- 🔁 Load navbar -->
+    <div id="navbar-placeholder"></div>
+
+    <div class="container mt-5">
+        <h2 class="text-center">Admin Panel</h2>
+        <p class="text-muted text-center mb-3" id="admin-msg">Welcome, administrator. You may manage user roles below.</p>
+
+        <!-- 🔓 Everyone can use this form (no role restriction) -->
+        <form id="updateRoleForm" class="p-3 shadow bg-white rounded">
+            <div class="mb-3">
+                <label class="form-label">User ID</label>
+                <input type="number" name="id" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Role</label>
+                <select name="role" class="form-control" required>
+                    <option value="admin">Admin</option>
+                    <option value="employer">Employer</option>
+                    <option value="jobseeker">Job Seeker</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-danger w-100">Update Role</button>
+        </form>
+    </div>
+
+    <script>
+        // 🔐 Login check only — not role based
+        const token = localStorage.getItem("token");
+        if (!token) {
+            alert("You must be logged in to access the admin panel.");
+            window.location.href = "login.html";
+        }
+
+        // Load and display user info from token
+        fetch("navbar.html")
+            .then(res => res.text())
+            .then(html => {
+                document.getElementById("navbar-placeholder").innerHTML = html;
+                showUserInfo();
+            });
+
+        function showUserInfo() {
+            const token = localStorage.getItem("token");
+            if (!token) return;
+
+            try {
+                const decoded = atob(token); // "userId:role"
+                const [userId, role] = decoded.split(":");
+
+                fetch(`/hapible/api/users?id=${userId}`)
+                    .then(res => res.json())
+                    .then(user => {
+                        const name = user.name;
+                        const userInfoEl = document.getElementById("user-info");
+                        if (userInfoEl) {
+                            userInfoEl.textContent = `${name} (${role})`;
+                        }
+                    });
+            } catch (err) {
+                console.error("Invalid token:", err);
+                localStorage.removeItem("token");
+                window.location.href = "login.html";
+            }
+        }
+
+        // 🔓 No backend role check — any user can submit
+        document.getElementById("updateRoleForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+            fetch('/hapible/api/admin', {
+                method: 'POST',
+                body: new FormData(this)
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert("Role updated!");
+            });
+        });
+
+        function logout() {
+            localStorage.removeItem("token");
+            alert("Logged out.");
+            window.location.href = "login.html";
+        }
+    </script>
+</body>
+</html>
