@@ -9,7 +9,11 @@ class ApplicationController {
             self::updateApplicationStatus();
         } elseif ($_SERVER["REQUEST_METHOD"] == "POST") {
             self::apply();
+        } elseif ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['days'])) {
+            // Handle the request for statistics
+            self::getStatistics();
         } elseif ($_SERVER["REQUEST_METHOD"] == "GET") {
+            // Default GET behavior (e.g., get all applications)
             self::getApplications();
         } elseif ($_SERVER["REQUEST_METHOD"] == "DELETE") {
             self::deleteApplication();
@@ -17,6 +21,7 @@ class ApplicationController {
             self::updateApplicationStatus(); // optional fallback
         }
     }
+    
     
     
     
@@ -93,6 +98,34 @@ class ApplicationController {
         }
     }
     
+    public static function getFilteredApplications() {
+        global $conn;
+    
+        $status = isset($_GET['status']) ? strtolower(trim($_GET['status'])) : null;
+        $job = isset($_GET['job']) ? "%" . $conn->real_escape_string($_GET['job']) . "%" : null;
+        $user = isset($_GET['user']) ? "%" . $conn->real_escape_string($_GET['user']) . "%" : null;
+    
+        $query = "SELECT applications.*, jobs.title AS job_title, users.name AS user_name
+                  FROM applications
+                  LEFT JOIN jobs ON applications.job_id = jobs.id
+                  LEFT JOIN users ON applications.user_id = users.id
+                  WHERE 1";
+    
+        if ($status) $query .= " AND LOWER(applications.status) = '$status'";
+        if ($job) $query .= " AND jobs.title LIKE '$job'";
+        if ($user) $query .= " AND users.name LIKE '$user'";
+    
+        $result = $conn->query($query);
+        $apps = [];
+        while ($row = $result->fetch_assoc()) {
+            $apps[] = $row;
+        }
+    
+        echo json_encode($apps);
+    }
+    
+    
+    
     
 
     public static function deleteApplication() {
@@ -131,6 +164,60 @@ class ApplicationController {
         echo json_encode(["success" => "Download logged"]);
     }
 
+    
+    
+    
+    public static function getStatistics() {
+        global $conn;
+    
+        // Get the number of applications for the last X days
+        $days = isset($_GET['days']) ? intval($_GET['days']) : 7; // Default is the last 7 days
+        $endDate = date('Y-m-d');
+        $startDate = date('Y-m-d', strtotime("-$days days"));
+    
+        $status = isset($_GET['status']) ? strtolower(trim($_GET['status'])) : null;
+        $job = isset($_GET['job']) ? "%" . $conn->real_escape_string($_GET['job']) . "%" : null;
+        $user = isset($_GET['user']) ? "%" . $conn->real_escape_string($_GET['user']) . "%" : null;
+    
+        // Corrected query
+        $query = "SELECT COUNT(applications.id) AS total, DATE(applications.created_at) AS date
+                  FROM applications
+                  LEFT JOIN jobs ON applications.job_id = jobs.id
+                  LEFT JOIN users ON applications.user_id = users.id
+                  WHERE applications.created_at BETWEEN '$startDate' AND '$endDate'";
+    
+        // Add filters to the query if they exist
+        if ($status) {
+            $query .= " AND LOWER(applications.status) = '$status'";
+        }
+        if ($job) {
+            $query .= " AND jobs.title LIKE '$job'";
+        }
+        if ($user) {
+            $query .= " AND users.name LIKE '$user'";
+        }
+    
+        // Proper GROUP BY and ORDER BY
+        $query .= " GROUP BY DATE(applications.created_at)
+                    ORDER BY DATE(applications.created_at)";
+    
+        // Execute the query
+        $result = $conn->query($query);
+    
+        $stats = [];
+        while ($row = $result->fetch_assoc()) {
+            $stats[] = $row;
+        }
+    
+        // Return the statistics as a JSON response
+        echo json_encode($stats);
+    }
+    
+    
+    
+    
+    
+    
     public static function updateApplicationStatus() {
         global $conn;
         $input = json_decode(file_get_contents("php://input"), true);

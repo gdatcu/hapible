@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Applications Statistics</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-light">
+
+<div class="container mt-5">
+    <h2 class="text-center mb-4">Applications Statistics</h2>
+
+    <!-- Filter Section -->
+    <div class="d-flex justify-content-between mb-4">
+        <div>
+            <label for="statusFilter" class="form-label">Status:</label>
+            <select id="statusFilter" class="form-select w-auto">
+                <option value="">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="reviewed">Reviewed</option>
+                <option value="accepted">Accepted</option>
+                <option value="rejected">Rejected</option>
+            </select>
+        </div>
+
+        <div>
+            <label for="jobFilter" class="form-label">Job:</label>
+            <input type="text" id="jobFilter" class="form-control w-auto" placeholder="Job Title">
+        </div>
+
+        <div>
+            <label for="userFilter" class="form-label">User:</label>
+            <input type="text" id="userFilter" class="form-control w-auto" placeholder="User Name">
+        </div>
+    </div>
+
+    <!-- Chart Section -->
+    <div class="mb-4">
+        <canvas id="applicationsChart" width="400" height="200"></canvas>
+    </div>
+
+    <!-- Applications Table -->
+    <div id="applicationsList"></div>
+</div>
+
+<script>
+// Fetch recent statistics (number of applications over the last X days)
+function fetchStatistics(days = 7) {
+    const status = document.getElementById('statusFilter').value;
+    const job = document.getElementById('jobFilter').value;
+    const user = document.getElementById('userFilter').value;
+
+    const params = new URLSearchParams();
+    params.append('days', days);
+    if (status) params.append('status', status);
+    if (job) params.append('job', job);
+    if (user) params.append('user', user);
+
+    fetch(`/hapible/api/apply?${params.toString()}`)
+        .then(res => {
+            if (!res.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return res.json();
+        })
+        .then(data => {
+            console.log('Statistics data:', data);
+            renderChart(data);
+        })
+        .catch(error => {
+            console.error('Error fetching statistics:', error);
+        });
+}
+
+// Render the chart with statistics data
+function renderChart(stats) {
+    const ctx = document.getElementById('applicationsChart').getContext('2d');
+
+    // Check if the response has data
+    if (!stats || stats.length === 0) {
+        console.log("No data available for chart");
+        return; // Don't render chart if no data
+    }
+
+    const dates = stats.map(item => item.date);
+    const applicationsCount = stats.map(item => item.total);
+
+    // Log the data being passed to the chart
+    console.log("Chart data:", dates, applicationsCount);
+
+    // Destroy the old chart if it exists
+    if (window.chart) {
+        window.chart.destroy();
+    }
+
+    // Create a new chart
+    window.chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: dates,
+            datasets: [{
+                label: 'Applications',
+                data: applicationsCount,
+                borderColor: 'rgba(75, 192, 192, 1)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: { title: { display: true, text: 'Date' } },
+                y: { title: { display: true, text: 'Applications Count' } }
+            }
+        }
+    });
+}
+
+// Fetch filtered applications based on user input (status, job, user)
+function fetchApplications() {
+    const status = document.getElementById('statusFilter').value;
+    const job = document.getElementById('jobFilter').value;
+    const user = document.getElementById('userFilter').value;
+
+    const params = new URLSearchParams();
+    if (status) params.append('status', status);
+    if (job) params.append('job', job);
+    if (user) params.append('user', user);
+
+    // Fetch the filtered applications
+    fetch(`/hapible/api/apply?${params.toString()}`)
+        .then(res => res.json())
+        .then(data => {
+            renderApplications(data); // Render the filtered applications
+        })
+        .catch(err => console.error("Error fetching filtered applications:", err));
+}
+
+// Render applications list
+function renderApplications(applications) {
+    const list = document.getElementById('applicationsList');
+    list.innerHTML = applications.map(app => `
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">${app.job_title}</h5>
+                <p>Status: ${app.status}</p>
+                <p>User: ${app.user_name}</p>
+                <p>Message: ${app.message}</p>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Initial fetch and setup
+fetchStatistics(7); // Fetch stats for the last 7 days initially
+fetchApplications(); // Fetch all applications initially
+
+// Add event listeners for filters
+document.getElementById('statusFilter').addEventListener('change', () => {
+    fetchStatistics(7); // Re-fetch statistics with filters
+    fetchApplications(); // Re-fetch applications with filters
+});
+document.getElementById('jobFilter').addEventListener('input', () => {
+    fetchStatistics(7); // Re-fetch statistics with filters
+    fetchApplications(); // Re-fetch applications with filters
+});
+document.getElementById('userFilter').addEventListener('input', () => {
+    fetchStatistics(7); // Re-fetch statistics with filters
+    fetchApplications(); // Re-fetch applications with filters
+});
+</script>
+
+</body>
+</html>
