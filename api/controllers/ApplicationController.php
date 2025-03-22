@@ -12,15 +12,33 @@ class ApplicationController {
         }
     }
 
-public static function apply() {
-    global $conn;
-    $job_id = $_POST['job_id'];
-    $user_id = $_POST['user_id']; // 🔓 Vulnerable: no token verification
-    $message = $_POST['message'];
-
-    $conn->query("INSERT INTO applications (job_id, user_id, message) VALUES ('$job_id', '$user_id', '$message')");
-    echo json_encode(["success" => "Application submitted"]);
-}
+    public static function apply() {
+        global $conn;
+    
+        $job_id = $_POST['job_id'];
+        $user_id = $_POST['user_id']; // 🔓 No auth validation
+        $message = $_POST['message'];
+        $resumePath = null;
+    
+        // 🔥 Vulnerable file upload (no type/size check, no sanitization)
+        if (isset($_FILES['resume']) && $_FILES['resume']['error'] === 0) {
+            $uploadDir = __DIR__ . '/../../uploads/';
+            $originalName = $_FILES['resume']['name']; // No sanitization!
+            $tempPath = $_FILES['resume']['tmp_name'];
+            $targetPath = $uploadDir . $originalName;
+    
+            if (move_uploaded_file($tempPath, $targetPath)) {
+                $resumePath = $targetPath;
+            }
+        }
+    
+        $stmt = $conn->prepare("INSERT INTO applications (job_id, user_id, message, resume) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("iiss", $job_id, $user_id, $message, $resumePath);
+        $stmt->execute();
+    
+        echo json_encode(["success" => "Application submitted", "resume" => $resumePath]);
+    }
+    
 
 public static function getApplications() {
     global $conn;

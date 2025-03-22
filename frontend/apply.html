@@ -202,13 +202,14 @@
                     Company: <span class="text-primary fw-bold">${job.company_name || "—"}</span>
                   </p>
                   <div class="d-flex gap-2">
-                    <button class="btn btn-sm btn-warning" onclick="editJob(${job.id}, '${job.title}', \`${job.description.replace(/`/g, "\\`")}\`)">Edit</button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteJob(${job.id})">Delete</button>
-                    <button class="btn btn-sm ${job.status === 'active' ? 'btn-secondary' : 'btn-success'}" onclick="changeJobStatus(${job.id}, '${job.status === 'active' ? 'inactive' : 'active'}')">
-                      ${job.status === 'active' ? 'Inactivate' : 'Reactivate'}
-                    </button>
-                    ${isExpired ? `<button class="btn btn-sm btn-info" onclick="renewJob(${job.id})">Renew</button>` : ''}
-                  </div>
+                  <button 
+                    class="btn btn-sm btn-primary" 
+                    ${job.status === 'inactive' || isExpired ? 'disabled title="Job is inactive or expired"' : `onclick="selectJob(${job.id})"`}
+                  >
+                    Apply
+                  </button>
+                 </div>
+
                 </div>
               </div>
             `;
@@ -245,25 +246,27 @@
   document.getElementById("message").focus();
 }
 
-    document.getElementById("applyForm").addEventListener("submit", function (event) {
-      event.preventDefault();
+document.getElementById("applyForm").addEventListener("submit", function (event) {
+  event.preventDefault();
 
-      const decoded = atob(token);
-      const [userId] = decoded.split(":");
-      const formData = new FormData(this);
-      formData.append("user_id", userId); // 🔓 Mass assignment possible
+  const decoded = atob(localStorage.getItem("token"));
+  const [userId] = decoded.split(":");
+  
+  const formData = new FormData(this);
+  formData.append("user_id", userId); // 🔓 Vulnerable: no session check
 
-      fetch("/hapible/api/apply", {
-        method: "POST",
-        body: formData
-      })
-        .then(res => res.json())
-        .then(data => {
-          alert("Application submitted!");
-			this.reset();
-			document.getElementById("applyContainer").classList.add("d-none");
-        });
-    });
+  fetch("/hapible/api/apply", {
+    method: "POST",
+    body: formData
+  })
+  .then(res => res.json())
+  .then(data => {
+    alert("Application submitted!");
+    this.reset();
+    document.getElementById("applyContainer").classList.add("d-none");
+  });
+});
+
 
     loadJobs();
 
@@ -308,7 +311,6 @@ document.getElementById("clearFilters").addEventListener("click", function () {
   localStorage.setItem("currentPage", 1); // Reset to first page
   loadJobs();
 });
-
 
 
     function logout() {
