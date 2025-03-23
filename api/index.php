@@ -2,7 +2,7 @@
 header("Content-Type: application/json");
 
 // Include all controllers
-require __DIR__ . '\controllers\AuthController.php';
+require __DIR__ . '/controllers/AuthController.php';
 require __DIR__ . '/controllers/UserController.php';
 require __DIR__ . '/controllers/JobController.php';
 require __DIR__ . '/controllers/ApplicationController.php';
