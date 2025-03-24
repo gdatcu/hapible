@@ -1,6 +1,6 @@
 <?php
 $host = "localhost";
-$user = "root";
+$user = "gbrmlvka_hapibleadm";
 $password = "qazXSW@1393";
 $database = "gbrmlvka_hapible";
 
