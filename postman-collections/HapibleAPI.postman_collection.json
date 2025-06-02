@@ -1,0 +1,1043 @@
+{
+	"info": {
+		"_postman_id": "3f54631f-56f2-46c3-9bfe-7d9135321158",
+		"name": "Hapible API",
+		"description": "This Postman collection provides a comprehensive set of requests for testing the `hapible` job application platform's API endpoints. It covers user authentication, job management, application processes, and administrative functions.\n\n**The base URL for all requests is assumed to be** `apps.qualiadept.eu/hapible/api`\n\n**How to Use in Postman:**\n\n1. **Create a New Collection**: In Postman, click \"New\" -> \"Collection\".\n    \n2. **Set Collection Variables**: In the collection's \"Variables\" tab, add a variable named `baseUrl` with the initial value set to your hapible application's API base URL (e.g., `http://localhost/hapible/api`). This allows you to easily change the base URL for all requests in the collection.\n    \n3. **Add Requests**: For each API endpoint listed above:\n    \n    - Click \"Add Request\" within your collection.\n        \n    - Set the HTTP method (GET, POST, DELETE, PUT).\n        \n    - Construct the URL using `{{baseUrl}}` and the specific endpoint.\n        \n    - Configure the \"Body\" tab (e.g., `x-www-form-urlencoded`, `form-data`, `raw` JSON) and add the necessary parameters as described.\n        \n    - Add example values for the parameters.\n        \n    - Save the request with a descriptive name.\n        \n4. **Test**: Send each request and observe the responses.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "29855880",
+		"_collection_link": "https://gold-comet-199449.postman.co/workspace/75ae811c-f4a6-46a7-8662-6052c68d599e/collection/29855880-3f54631f-56f2-46c3-9bfe-7d9135321158?action=share&source=collection_link&creator=29855880"
+	},
+	"item": [
+		{
+			"name": "1. Authentication & Registration",
+			"item": [
+				{
+					"name": "Register User",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Generate unique username and email",
+									"var timestamp = Date.now();",
+									"var randomSuffix = Math.floor(Math.random() * 10000);",
+									"var uniqueUsername = \"dynamic_user_\" + timestamp + \"_\" + randomSuffix;",
+									"var uniqueEmail = \"dynamic_\" + timestamp + \"_\" + randomSuffix + \"@example.com\";",
+									"",
+									"// Set these as collection variables for potential reuse or logging",
+									"pm.collectionVariables.set(\"lastRegisteredUsername\", uniqueUsername);",
+									"pm.collectionVariables.set(\"lastRegisteredEmail\", uniqueEmail);",
+									"pm.collectionVariables.set(\"lastRegisteredPassword\", \"testpass\"); // Store password for login",
+									"",
+									"// Update request body with unique data",
+									"pm.request.body.urlencoded.upsert({ key: \"username\", value: uniqueUsername });",
+									"pm.request.body.urlencoded.upsert({ key: \"email\", value: uniqueEmail });",
+									"pm.request.body.urlencoded.upsert({ key: \"password\", value: pm.collectionVariables.get(\"lastRegisteredPassword\") });",
+									"pm.request.body.urlencoded.upsert({ key: \"name\", value: \"Dynamic User \" + timestamp });",
+									"",
+									"console.log(\"Pre-request: Registering user: \" + uniqueUsername + \" / \" + uniqueEmail);",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Registration successful\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.eql(\"User registered\");",
+									"    console.log(\"Post-request: User '\" + pm.collectionVariables.get(\"lastRegisteredUsername\") + \"' registered successfully.\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "name",
+									"value": "Dynamic User",
+									"type": "text"
+								},
+								{
+									"key": "username",
+									"value": "dynamic_user_00000",
+									"type": "text"
+								},
+								{
+									"key": "email",
+									"value": "dynamic_user_00000@example.com",
+									"type": "text"
+								},
+								{
+									"key": "password",
+									"value": "testpass",
+									"type": "text"
+								},
+								{
+									"key": "role",
+									"value": "jobseeker",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"register"
+							]
+						},
+						"description": "Registers a new user account with dynamically generated username and email to ensure uniqueness."
+					},
+					"response": []
+				},
+				{
+					"name": "Login User",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"var usernameToLogin = pm.collectionVariables.get(\"lastRegisteredUsername\") || \"admin\";",
+									"var passwordToLogin = pm.collectionVariables.get(\"lastRegisteredPassword\") || \"admin123\";",
+									"",
+									"pm.request.body.urlencoded.upsert({ key: \"username\", value: usernameToLogin });",
+									"pm.request.body.urlencoded.upsert({ key: \"password\", value: passwordToLogin });",
+									"",
+									"console.log(\"Pre-request: Attempting to login as: \" + usernameToLogin);",
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Login successful and token received\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.token).to.be.a('string');",
+									"    pm.collectionVariables.set(\"authToken\", jsonData.token);",
+									"    pm.collectionVariables.set(\"apiKey\", jsonData.api_key);",
+									"    // Decode token to get user ID and role",
+									"    var decodedToken = atob(jsonData.token);",
+									"    var parts = decodedToken.split(':');",
+									"    pm.collectionVariables.set(\"loggedInUserId\", parts[0]);",
+									"    pm.collectionVariables.set(\"loggedInUserRole\", parts[1]);",
+									"    console.log(\"Post-request: Successfully logged in as User ID: \" + parts[0] + \", Role: \" + parts[1]);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "username",
+									"value": "admin",
+									"type": "text"
+								},
+								{
+									"key": "password",
+									"value": "admin123",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth"
+							]
+						},
+						"description": "Authenticates a user. Tries to use the last registered user's credentials, otherwise defaults to 'admin'."
+					},
+					"response": []
+				}
+			],
+			"description": "**1\\. Authentication & Registration**  \nThis folder contains requests related to user account creation and login, allowing users to register and obtain authentication tokens.\n\n- **Register User**\n    \n    - **Method**: `POST`\n        \n    - **URL**: `{{baseUrl}}/register`\n        \n    - **Description**: Registers a new user account with the specified details and role.\n        \n    - **Body**: `x-www-form-urlencoded`\n        \n        - `name`: `string` (e.g., `John Doe`)\n            \n        - `username`: `string` (e.g., `johndoe`)\n            \n        - `email`: `string` (e.g., `john@example.com`)\n            \n        - `password`: `string` (e.g., `password123`)\n            \n        - `role`: `string` (e.g., `jobseeker`, `employer`, `admin`)\n            \n        - `company_name`: `string` (Optional, required if `role` is `employer`)\n            \n    - **Success Response**: `{\"success\": \"User registered\"}`\n        \n    - **Error Response**: `{\"error\": \"Failed to register\"}`\n        \n- **Login User**\n    \n    - **Method**: `POST`\n        \n    - **URL**: `{{baseUrl}}/auth`\n        \n    - **Description**: Authenticates a user with provided credentials and returns an authentication token and API key.\n        \n    - **Body**: `x-www-form-urlencoded`\n        \n        - `username`: `string` (e.g., `admin`)\n            \n        - `password`: `string` (e.g., `admin123`)\n            \n    - **Success Response**: `{\"token\": \"...\", \"api_key\": \"...\"}`\n        \n    - **Error Response**: `{\"error\": \"Invalid credentials\"}`"
+		},
+		{
+			"name": "2. User Management",
+			"item": [
+				{
+					"name": "Get User Details",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"if (!pm.collectionVariables.get(\"loggedInUserId\")) {",
+									"    console.warn(\"Pre-request: loggedInUserId not set. Please run 'Login User' first.\");",
+									"    // Optionally, you could set a default or skip the request for testing purposes",
+									"    // pm.request.url.addQueryParams(\"id=1\"); // Fallback to user ID 1",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"User details retrieved successfully\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.id).to.eql(parseInt(pm.collectionVariables.get(\"loggedInUserId\")));",
+									"    pm.expect(jsonData.username).to.be.a('string');",
+									"    pm.expect(jsonData.role).to.be.a('string');",
+									"    console.log(\"Post-request: Retrieved details for user: \" + jsonData.username);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users?id={{loggedInUserId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users"
+							],
+							"query": [
+								{
+									"key": "id",
+									"value": "{{loggedInUserId}}"
+								}
+							]
+						},
+						"description": "Retrieves the details of a specific user by their ID."
+					},
+					"response": []
+				},
+				{
+					"name": "Update User Details",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"if (!pm.collectionVariables.get(\"loggedInUserId\")) {",
+									"    console.warn(\"Pre-request: loggedInUserId not set. Please run 'Login User' first.\");",
+									"}",
+									"// Ensure the ID in the body matches the logged-in user ID for security practices",
+									"pm.request.body.urlencoded.upsert({ key: \"id\", value: pm.collectionVariables.get(\"loggedInUserId\") });",
+									"pm.request.body.urlencoded.upsert({ key: \"username\", value: \"updated_\" + pm.collectionVariables.get(\"lastRegisteredUsername\") });",
+									"pm.request.body.urlencoded.upsert({ key: \"email\", value: \"updated_\" + pm.collectionVariables.get(\"lastRegisteredEmail\") });",
+									"console.log(\"Pre-request: Updating user details for: \" + pm.collectionVariables.get(\"loggedInUserId\"));"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"User updated successfully\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.eql(\"User updated\");",
+									"    console.log(\"Post-request: User details updated.\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "id",
+									"value": "{{loggedInUserId}}",
+									"type": "text"
+								},
+								{
+									"key": "email",
+									"value": "updated_email@example.com",
+									"type": "text"
+								},
+								{
+									"key": "username",
+									"value": "updated_username",
+									"type": "text"
+								},
+								{
+									"key": "company_name",
+									"value": "Updated Company Name",
+									"type": "text",
+									"disabled": true
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/users",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users"
+							]
+						},
+						"description": "Updates the profile information for a specified user."
+					},
+					"response": []
+				}
+			],
+			"description": "**2\\. User Management**  \nThis folder includes requests for retrieving and updating user profile information.\n\n- **Get User Details**\n    \n    - **Method**: `GET`\n        \n    - **URL**: `{{baseUrl}}/users?id={{userId}}`\n        \n    - **Description**: Retrieves the details of a specific user by their ID.\n        \n    - **Query Parameters**:\n        \n        - `id`: `number` (User ID, e.g., `1`. Defaults to 1 if not provided.)\n            \n    - **Success Response**: `{\"id\": ..., \"username\": ..., \"name\": ..., \"email\": ..., \"role\": ...}`\n        \n    - **Error Response**: `{\"error\": \"User not found\"}`\n        \n- **Update User Details**\n    \n    - **Method**: `POST`\n        \n    - **URL**: `{{baseUrl}}/users`\n        \n    - **Description**: Updates the profile information for a specified user.\n        \n    - **Body**: `x-www-form-urlencoded`\n        \n        - `id`: `number` (User ID, e.g., `1`)\n            \n        - `email`: `string` (e.g., `newemail@example.com`)\n            \n        - `username`: `string` (e.g., `newusername`)\n            \n        - `company_name`: `string` (Optional)\n            \n    - **Success Response**: `{\"success\": \"User updated\"}`"
+		},
+		{
+			"name": "3. Job Management",
+			"item": [
+				{
+					"name": "Create Job",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"if (!pm.collectionVariables.get(\"loggedInUserId\")) {",
+									"    console.warn(\"Pre-request: loggedInUserId not set. Please run 'Login User' first.\");",
+									"    // Optional: pm.request.cancel(); // Uncomment to stop if ID is missing",
+									"}",
+									"if (pm.collectionVariables.get(\"loggedInUserRole\") !== \"employer\" && pm.collectionVariables.get(\"loggedInUserRole\") !== \"admin\") {",
+									"    console.warn(\"Pre-request: Logged-in user is not an employer or admin. Job creation might fail.\");",
+									"}",
+									"pm.request.body.urlencoded.upsert({ key: \"employer_id\", value: pm.collectionVariables.get(\"loggedInUserId\") });",
+									"var timestamp = Date.now();",
+									"pm.request.body.urlencoded.upsert({ key: \"title\", value: \"Dynamic Job \" + timestamp });",
+									"console.log(\"Pre-request: Creating job: \" + pm.request.body.urlencoded.get(\"title\"));"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Job created successfully\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.eql(\"Job created\");",
+									"    console.log(\"Post-request: Job created successfully.\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "title",
+									"value": "New Software Engineer Role",
+									"type": "text"
+								},
+								{
+									"key": "description",
+									"value": "Develop cutting-edge software solutions.",
+									"type": "text"
+								},
+								{
+									"key": "employer_id",
+									"value": "{{loggedInUserId}}",
+									"type": "text"
+								},
+								{
+									"key": "expires_at",
+									"value": "2025-12-31",
+									"type": "text",
+									"disabled": true
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/jobs",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"jobs"
+							]
+						},
+						"description": "Creates a new job posting. Requires employer_id from a logged-in employer or admin user."
+					},
+					"response": []
+				},
+				{
+					"name": "List All Jobs",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Response is an array\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});",
+									"// Capture the ID of the first job for subsequent tests, if available",
+									"var jsonData = pm.response.json();",
+									"if (jsonData.length > 0) {",
+									"    pm.collectionVariables.set(\"jobId\", jsonData[0].id);",
+									"    console.log(\"Post-request: Captured jobId: \" + jsonData[0].id);",
+									"} else {",
+									"    console.warn(\"Post-request: No jobs found to capture jobId. Create a job first.\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/jobs",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"jobs"
+							]
+						},
+						"description": "Retrieves a list of all available job postings. Captures the ID of the first job found."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Job",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"if (!pm.collectionVariables.get(\"jobId\")) {",
+									"    console.warn(\"Pre-request: jobId not set. Please run 'List All Jobs' first to capture a job ID.\");",
+									"    // Optional: pm.request.cancel(); // Uncomment to stop if ID is missing",
+									"}",
+									"pm.request.body.urlencoded.upsert({ key: \"id\", value: pm.collectionVariables.get(\"jobId\") });",
+									"console.log(\"Pre-request: Updating job: \" + pm.collectionVariables.get(\"jobId\"));"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Job updated successfully\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.eql(\"Job updated\");",
+									"    console.log(\"Post-request: Job updated.\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "action",
+									"value": "update",
+									"type": "text"
+								},
+								{
+									"key": "id",
+									"value": "{{jobId}}",
+									"type": "text"
+								},
+								{
+									"key": "title",
+									"value": "Updated Software Engineer Role",
+									"type": "text"
+								},
+								{
+									"key": "description",
+									"value": "Updated description for cutting-edge software solutions.",
+									"type": "text"
+								},
+								{
+									"key": "expires_at",
+									"value": "2026-01-31",
+									"type": "text",
+									"disabled": true
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/jobs",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"jobs"
+							]
+						},
+						"description": "Updates an existing job posting's details."
+					},
+					"response": []
+				}
+			],
+			"description": "**3\\. Job Management**  \nThis folder contains requests for creating, updating, listing, and managing job postings.\n\n- **Create Job**\n    \n    - **Method**: `POST`\n        \n    - **URL**: `{{baseUrl}}/jobs`\n        \n    - **Description**: Creates a new job posting.\n        \n    - **Body**: `x-www-form-urlencoded`\n        \n        - `title`: `string` (e.g., `Software Engineer`)\n            \n        - `description`: `string` (e.g., `Develop and maintain software...`)\n            \n        - `employer_id`: `number` (ID of the employer user)\n            \n        - `expires_at`: `date` (Optional, `YYYY-MM-DD`, defaults to 21 days from now)\n            \n    - **Success Response**: `{\"success\": \"Job created\"}`\n        \n- **Update Job**\n    \n    - **Method**: `POST`\n        \n    - **URL**: `{{baseUrl}}/jobs`\n        \n    - **Description**: Updates an existing job posting's details.\n        \n    - **Body**: `x-www-form-urlencoded`\n        \n        - `action`: `update`\n            \n        - `id`: `number` (Job ID)\n            \n        - `title`: `string` (e.g., `Senior Software Engineer`)\n            \n        - `description`: `string` (e.g., `Lead a team and develop software...`)\n            \n        - `expires_at`: `date` (Optional, `YYYY-MM-DD`)\n            \n    - **Success Response**: `{\"success\": \"Job updated\"}`\n        \n- **Update Job Status**\n    \n    - **Method**: `POST`\n        \n    - **URL**: `{{baseUrl}}/jobs`\n        \n    - **Description**: Changes the status of a job posting (e.g., to active or inactive).\n        \n    - **Body**: `x-www-form-urlencoded`\n        \n        - `action`: `updateStatus`\n            \n        - `id`: `number` (Job ID)\n            \n        - `status`: `string` (e.g., `active`, `inactive`)\n            \n    - **Success Response**: `{\"success\": \"Job status updated to {status}\"}`\n        \n- **Delete Job**\n    \n    - **Method**: `DELETE`\n        \n    - **URL**: `{{baseUrl}}/jobs`\n        \n    - **Description**: Deletes a job posting by its ID. Will fail if applications are linked to the job.\n        \n    - **Body**: `x-www-form-urlencoded` (or raw JSON for PUT/DELETE with specific headers if supported)\n        \n        - `id`: `number` (Job ID)\n            \n    - **Success Response**: `{\"success\": \"Job deleted\"}`\n        \n    - **Error Response**: `{\"error\": \"Job ID is required\"}` or `{\"error\": \"Cannot delete this job because applications exist.\"}`\n        \n    - _Alternative for POST fallback_:\n        \n        - **Method**: `POST`\n            \n        - **URL**: `{{baseUrl}}/jobs`\n            \n        - **Body**: `x-www-form-urlencoded`\n            \n            - `action`: `delete`\n                \n            - `id`: `number` (Job ID)\n                \n- **List All Jobs**\n    \n    - **Method**: `GET`\n        \n    - **URL**: `{{baseUrl}}/jobs`\n        \n    - **Description**: Retrieves a list of all available job postings.\n        \n    - **Success Response**: `[{\"id\": ..., \"title\": ..., \"description\": ..., \"employer_id\": ..., \"expires_at\": ..., \"created_at\": ..., \"company_name\": ...}, ...]`\n        \n- **Renew Job**\n    \n    - **Method**: `POST`\n        \n    - **URL**: `{{baseUrl}}/jobs`\n        \n    - **Description**: Renews an expired job posting, setting its status to active and extending the expiry date.\n        \n    - **Body**: `x-www-form-urlencoded`\n        \n        - `action`: `renew`\n            \n        - `id`: `number` (Job ID)\n            \n    - **Success Response**: `{\"success\": \"Job renewed\"}`"
+		},
+		{
+			"name": "4. Application Management",
+			"item": [
+				{
+					"name": "Apply for Job",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// --- Start of Pre-request Script for Apply for Job ---",
+									"",
+									"// Check if jobId and loggedInUserId are set",
+									"if (!pm.collectionVariables.get(\"jobId\")) {",
+									"    console.warn(\"Pre-request: jobId not set. Please run 'List All Jobs' first to capture a job ID.\");",
+									"    // Optional: pm.request.cancel(); // Uncomment to stop if ID is missing",
+									"}",
+									"if (!pm.collectionVariables.get(\"loggedInUserId\")) {",
+									"    console.warn(\"Pre-request: loggedInUserId not set. Please run 'Login User' first.\");",
+									"    // Optional: pm.request.cancel(); // Uncomment to stop if ID is missing",
+									"}",
+									"",
+									"// Access the formdata members directly and remove existing job_id and user_id entries",
+									"// This ensures that new values are added without conflicts from placeholders or previous runs.",
+									"let formdataMembers = pm.request.body.formdata.members;",
+									"for (let i = formdataMembers.length - 1; i >= 0; i--) {",
+									"    if (formdataMembers[i].key === \"job_id\" || formdataMembers[i].key === \"user_id\") {",
+									"        formdataMembers.splice(i, 1); // Remove the existing element",
+									"    }",
+									"}",
+									"",
+									"// Add the correct values from collection variables",
+									"pm.request.body.formdata.add({ key: \"job_id\", value: pm.collectionVariables.get(\"jobId\") });",
+									"pm.request.body.formdata.add({ key: \"user_id\", value: pm.collectionVariables.get(\"loggedInUserId\") });",
+									"",
+									"console.log(\"Pre-request: Applying for job \" + pm.collectionVariables.get(\"jobId\") + \" by user \" + pm.collectionVariables.get(\"loggedInUserId\"));",
+									"",
+									"// --- End of Pre-request Script for Apply for Job ---"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Application submitted successfully\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.eql(\"Application submitted\");",
+									"    console.log(\"Post-request: Application submitted. Resume path: \" + jsonData.resume);",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "job_id",
+									"value": "{{jobId}}",
+									"type": "text"
+								},
+								{
+									"key": "user_id",
+									"value": "{{loggedInUserId}}",
+									"type": "text"
+								},
+								{
+									"key": "message",
+									"value": "I am very interested in this position.",
+									"type": "text"
+								},
+								{
+									"key": "resume",
+									"type": "file",
+									"src": "/path/to/your/resume.pdf"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/apply",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"apply"
+							]
+						},
+						"description": "Submits a new job application. Requires a valid jobId and loggedInUserId."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Applications (by User ID)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"if (!pm.collectionVariables.get(\"loggedInUserId\")) {",
+									"    console.warn(\"Pre-request: loggedInUserId not set. Please run 'Login User' first.\");",
+									"    // Optional: pm.request.cancel();",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Response is an array of applications\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});",
+									"// Capture the ID of the first application for subsequent tests, if available",
+									"var jsonData = pm.response.json();",
+									"if (jsonData.length > 0) {",
+									"    pm.collectionVariables.set(\"applicationId\", jsonData[0].id);",
+									"    console.log(\"Post-request: Captured applicationId: \" + jsonData[0].id);",
+									"} else {",
+									"    console.warn(\"Post-request: No applications found for logged-in user. Apply for a job first.\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/apply?user_id={{loggedInUserId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"apply"
+							],
+							"query": [
+								{
+									"key": "user_id",
+									"value": "{{loggedInUserId}}"
+								}
+							]
+						},
+						"description": "Retrieves job applications submitted by a specific user. Captures the ID of the first application found."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Application Status",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"if (!pm.collectionVariables.get(\"applicationId\")) {",
+									"    console.warn(\"Pre-request: applicationId not set. Please run 'Get Applications (by User ID)' first to capture an application ID.\");",
+									"    // Optional: pm.request.cancel(); // Uncomment to stop if ID is missing",
+									"}",
+									"",
+									"// Directly construct the raw JSON body string using the resolved collection variable",
+									"// This ensures that `application_id` is a number when sent",
+									"pm.request.body.raw = JSON.stringify({",
+									"    application_id: parseInt(pm.collectionVariables.get(\"applicationId\")),",
+									"    status: \"reviewed\" // You can change this status as needed for your test case",
+									"});",
+									"",
+									"console.log(\"Pre-request: Updating status for application: \" + pm.collectionVariables.get(\"applicationId\"));"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Application status updated successfully\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.eql(\"Application status updated\");",
+									"    console.log(\"Post-request: Application status updated.\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"application_id\": {{applicationId}},\n    \"status\": \"reviewed\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/apply?updateStatus=true",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"apply"
+							],
+							"query": [
+								{
+									"key": "updateStatus",
+									"value": "true"
+								}
+							]
+						},
+						"description": "Updates the status of a specific job application (e.g., to reviewed, accepted, rejected)."
+					},
+					"response": []
+				},
+				{
+					"name": "Log Resume Download",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"if (!pm.collectionVariables.get(\"loggedInUserId\")) {",
+									"    console.warn(\"Pre-request: loggedInUserId not set. Please run 'Login User' first.\");",
+									"    // Optional: pm.request.cancel(); // Uncomment to stop if ID is missing",
+									"}",
+									"if (!pm.collectionVariables.get(\"applicationId\")) {",
+									"    console.warn(\"Pre-request: applicationId not set. Please run 'Get Applications (by User ID)' first to capture an application ID.\");",
+									"    // Optional: pm.request.cancel(); // Uncomment to stop if ID is missing",
+									"}",
+									"",
+									"// Directly construct the raw JSON body string using the resolved collection variables",
+									"// This ensures that user_id and application_id are numbers when sent",
+									"pm.request.body.raw = JSON.stringify({",
+									"    user_id: parseInt(pm.collectionVariables.get(\"loggedInUserId\")),",
+									"    application_id: parseInt(pm.collectionVariables.get(\"applicationId\"))",
+									"});",
+									"",
+									"console.log(\"Pre-request: Logging download for application: \" + pm.collectionVariables.get(\"applicationId\"));"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Download logged successfully\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.eql(\"Download logged\");",
+									"    console.log(\"Post-request: Download logged.\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"user_id\": {{loggedInUserId}},\n    \"application_id\": {{applicationId}}\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/apply?logDownload=true",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"apply"
+							],
+							"query": [
+								{
+									"key": "logDownload",
+									"value": "true"
+								}
+							]
+						},
+						"description": "Logs a resume download event, recording which user downloaded which application's resume."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Application",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"if (!pm.collectionVariables.get(\"applicationId\")) {",
+									"    console.warn(\"Pre-request: applicationId not set. Please run 'Get Applications (by User ID)' first to capture an application ID.\");",
+									"    // Optional: pm.request.cancel();",
+									"}",
+									"pm.request.body.urlencoded.upsert({ key: \"id\", value: pm.collectionVariables.get(\"applicationId\") });",
+									"console.log(\"Pre-request: Deleting application: \" + pm.collectionVariables.get(\"applicationId\"));"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Application deleted successfully\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.eql(\"Application deleted\");",
+									"    pm.collectionVariables.unset(\"applicationId\"); // Clear the application ID after successful deletion",
+									"    console.log(\"Post-request: applicationId variable unset.\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "id",
+									"value": "{{applicationId}}",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/apply",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"apply"
+							]
+						},
+						"description": "Deletes a specific job application by its ID."
+					},
+					"response": []
+				}
+			],
+			"description": "**4\\. Application Management**  \nThis folder handles requests for submitting job applications, retrieving application details, and managing application statuses.\n\n- **Apply for Job**\n    \n    - **Method**: `POST`\n        \n    - **URL**: `{{baseUrl}}/apply`\n        \n    - **Description**: Submits a new job application, optionally including a resume file.\n        \n    - **Body**: `form-data`\n        \n        - `job_id`: `number` (Job ID)\n            \n        - `user_id`: `number` (User ID of the applicant)\n            \n        - `message`: `string` (Application message)\n            \n        - `resume`: `file` (Resume file to upload)\n            \n    - **Success Response**: `{\"success\": \"Application submitted\", \"resume\": \"...\"}`\n        \n- **Get Applications**\n    \n    - **Method**: `GET`\n        \n    - **URL**: `{{baseUrl}}/apply`\n        \n    - **Description**: Retrieves job applications based on job ID, user ID, or all applications.\n        \n    - **Query Parameters**: (Use one of the following)\n        \n        - `job_id`: `number` (To get applications for a specific job)\n            \n        - `user_id`: `number` (To get applications by a specific user)\n            \n        - `all`: `true` (To get all applications)\n            \n    - **Success Response**: `[{\"id\": ..., \"job_id\": ..., \"user_id\": ..., \"message\": ..., \"resume\": ..., \"status\": ..., \"job_title\": ...}, ...]`\n        \n    - **Error Response**: `{\"error\": \"Server error\", \"details\": \"...\"}`\n        \n- **Get Filtered Applications / Statistics**\n    \n    - **Method**: `GET`\n        \n    - **URL**: `{{baseUrl}}/apply`\n        \n    - **Description**: Fetches filtered applications or application statistics over a period.\n        \n    - **Query Parameters**:\n        \n        - `days`: `number` (Optional, e.g., `7` for last 7 days statistics)\n            \n        - `status`: `string` (Optional, e.g., `pending`, `reviewed`, `accepted`, `rejected`)\n            \n        - `job`: `string` (Optional, search by job title, e.g., `Software`)\n            \n        - `user`: `string` (Optional, search by user name, e.g., `John`)\n            \n    - **Success Response (Applications)**: `[{\"id\": ..., \"job_id\": ..., \"user_id\": ..., \"message\": ..., \"resume\": ..., \"status\": ..., \"job_title\": ..., \"user_name\": ...}, ...]`\n        \n    - **Success Response (Statistics, if** **`days`** **is used)**: `[{\"total\": ..., \"date\": \"...\"}, ...]`\n        \n- **Delete Application**\n    \n    - **Method**: `DELETE`\n        \n    - **URL**: `{{baseUrl}}/apply`\n        \n    - **Description**: Deletes a specific job application by its ID.\n        \n    - **Body**: `x-www-form-urlencoded`\n        \n        - `id`: `number` (Application ID)\n            \n    - **Success Response**: `{\"success\": \"Application deleted\"}`\n        \n    - **Error Response**: `{\"error\": \"Missing application ID\"}`\n        \n- **Log Resume Download**\n    \n    - **Method**: `POST`\n        \n    - **URL**: `{{baseUrl}}/apply?logDownload=true`\n        \n    - **Description**: Logs a resume download event, recording which user downloaded which application's resume.\n        \n    - { \"user_id\": 1, \"application_id\": 1}\n        \n    - **Success Response**: `{\"success\": \"Download logged\"}`\n        \n    - **Error Response**: `{\"error\": \"Missing user or application ID\"}`\n        \n- **Update Application Status**\n    \n    - **Method**: `POST`\n        \n    - **URL**: `{{baseUrl}}/apply?updateStatus=true`\n        \n    - **Description**: Updates the status of a specific job application (e.g., to reviewed, accepted, rejected).\n        \n    - { \"application_id\": 1, \"status\": \"reviewed\"}\n        \n    - **Success Response**: `{\"success\": \"Application status updated\"}`\n        \n    - **Error Response**: `{\"error\": \"Missing application ID or status\"}` or `{\"error\": \"No application found with the provided ID\"}`\n        \n    - _Alternative for PUT fallback_:\n        \n        - **Method**: `PUT`\n            \n        - **URL**: `{{baseUrl}}/apply`\n            \n        - { \"application_id\": 1, \"status\": \"reviewed\"}"
+		},
+		{
+			"name": "5. Admin Functionality",
+			"item": [
+				{
+					"name": "Update User Role",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"if (!pm.collectionVariables.get(\"loggedInUserId\")) {",
+									"    console.warn(\"Pre-request: loggedInUserId not set. Please run 'Login User' first.\");",
+									"    // Optional: pm.request.cancel();",
+									"}",
+									"// Ensure the ID in the body is set. For testing, you might want to change this to a specific user ID.",
+									"pm.request.body.urlencoded.upsert({ key: \"id\", value: pm.collectionVariables.get(\"loggedInUserId\") });",
+									"",
+									"// Optional: Add a check if the logged-in user has admin role before attempting this request",
+									"if (pm.collectionVariables.get(\"loggedInUserRole\") !== \"admin\") {",
+									"    console.warn(\"Pre-request: Logged in user is not an admin. This request might fail due to insufficient permissions.\");",
+									"    // pm.request.cancel(); // Uncomment to skip if not admin",
+									"}",
+									"console.log(\"Pre-request: Attempting to update role for user: \" + pm.collectionVariables.get(\"loggedInUserId\"));"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"User role updated successfully\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.eql(\"User role updated\");",
+									"    console.log(\"Post-request: User role updated.\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "id",
+									"value": "{{loggedInUserId}}",
+									"type": "text"
+								},
+								{
+									"key": "role",
+									"value": "admin",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"admin"
+							]
+						},
+						"description": "Allows an administrator to update the role of any user. Requires logged-in admin user to succeed reliably."
+					},
+					"response": []
+				}
+			],
+			"description": "**5\\. Admin Functionality**  \nThis folder contains requests for administrative tasks, specifically updating user roles.\n\n- **Update User Role**\n    \n    - **Method**: `POST`\n        \n    - **URL**: `{{baseUrl}}/admin`\n        \n    - **Description**: Allows an administrator to update the role of any user.\n        \n    - **Body**: `x-www-form-urlencoded`\n        \n        - `id`: `number` (User ID)\n            \n        - `role`: `string` (e.g., `admin`, `employer`, `jobseeker`)\n            \n    - **Success Response**: `{\"success\": \"User role updated\"}`"
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost/hapible/api",
+			"type": "string"
+		},
+		{
+			"key": "authToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "apiKey",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "loggedInUserId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "loggedInUserRole",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "lastRegisteredUsername",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "lastRegisteredEmail",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "lastRegisteredPassword",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "jobId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
