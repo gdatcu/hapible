@@ -1,0 +1,994 @@
+openapi: 3.0.1
+info:
+  title: User Management API
+  description: "The User Management API allows applications to register users, manage logins, handle password resets, and more. \nIt offers security mechanisms such as API key authentication for safe access and various response codes for better debugging.\nSuitable for systems with user profile management, such as web apps, SaaS platforms, and mobile backends.\n"
+  version: 1.0.4
+servers:
+- url: https://test.hapifyme.com/api
+  description: Testing environment
+- url: http://localhost:8080/hapifyMe/api
+  description: Local environment
+- url: https://demo.hapifyme.com/api
+  description: Demo environment
+- url: https://hapifyme.com/api
+  description: Production environment
+- url: https://virtserver.swaggerhub.com/hapifyMe/hapifyMe/1.0.4
+  description: SwaggerHub API Auto Mocking
+tags:
+- name: User Management
+  description: "Operations related to user registration, login, and profile management."
+- name: System Health
+  description: Endpoints for monitoring system health and performance.
+paths:
+  /user/register.php:
+    post:
+      tags:
+      - User Management
+      summary: Register a new user
+      description: This API endpoint allow to register a new user to the application.
+      operationId: registerUser
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/register_php_body'
+        required: true
+      responses:
+        "201":
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_201'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_400_1'
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_409_1'
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_500'
+  /user/confirm_email.php:
+    get:
+      tags:
+      - User Management
+      summary: Confirm a user's email address using the confirmation token
+      description: This API endpoint helps to confirm the user's email address using the confirmation token.
+      operationId: confirmEmail
+      parameters:
+      - name: token
+        in: query
+        description: The token returned during user registration for verification
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Email confirmed successfully.
+          content:
+            text/html:
+              schema:
+                $ref: '#/components/schemas/SuccessResponseToken'
+        "400":
+          description: Bad Request.
+          content:
+            text/html:
+              schema:
+                $ref: '#/components/schemas/inline_response_400_2'
+        "500":
+          description: Internal Server Error.
+          content:
+            text/html:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseServer'
+  /user/retrieve_token.php:
+    get:
+      tags:
+      - User Management
+      summary: Retrieve confirmation token needed for account activation.
+      description: This API endpoint retrieves the confirmation token for a user based on their username or email. Requires a valid pre-defined API key.
+      operationId: retrieveToken
+      parameters:
+      - name: username_or_email
+        in: query
+        description: The username or email of the user to retrieve the confirmation token.
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Confirmation token retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_200_2'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_400_3'
+        "403":
+          description: Forbidden - Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_403'
+        "404":
+          description: Not Found - No token found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_404_1'
+        "405":
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_405_1'
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_500_1'
+      security:
+      - ApiKeyAuth: []
+  /user/request_password_reset.php:
+    post:
+      tags:
+      - User Management
+      summary: Request password reset
+      description: This API endpoint generates a password reset token for a user based on their email..
+      operationId: requestPasswordReset
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/user_request_password_reset_php_body'
+        required: true
+      responses:
+        "200":
+          description: Password reset token generated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_200_3'
+        "400":
+          description: Bad Request. Email is required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_400_4'
+        "401":
+          description: Unauthorized. Invalid or missing API key.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_400_4'
+      security:
+      - ApiKeyAuth: []
+  /user/reset_password.php:
+    post:
+      tags:
+      - User Management
+      summary: Reset password
+      description: This API endpoint resets the user's password after verifying the reset token.
+      operationId: resetPassword
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/user_reset_password_php_body'
+        required: true
+      responses:
+        "200":
+          description: Password reset successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_200_4'
+        "400":
+          description: Bad Request – Invalid or missing fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_400_5'
+        "401":
+          description: Unauthorized – Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_401_1'
+        "403":
+          description: Forbidden – Invalid or expired reset token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_403_1'
+      security:
+      - ApiKeyAuth: []
+  /user/revoke_api_key.php:
+    post:
+      tags:
+      - User Management
+      summary: Revoke the current API key
+      description: This API endpoint help to revoke/disable the current user's API Key.
+      operationId: revokeApiKey
+      responses:
+        "200":
+          description: API key successfully revoked.
+        "401":
+          description: Unauthorized - Invalid API key.
+        "500":
+          description: Failed to revoke API key.
+      security:
+      - ApiKeyAuth: []
+  /system/health_check.php:
+    get:
+      tags:
+      - System Health
+      summary: Check system health
+      description: "This API checks the health status of the system, including database connectivity, file system access, external API, and disk space."
+      operationId: healthCheck
+      responses:
+        "200":
+          description: System is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_200_5'
+        "500":
+          description: System has issues
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_500_2'
+      security:
+      - ApiKeyAuth: []
+  /user/login.php:
+    post:
+      tags:
+      - User Management
+      summary: User Login using username and password
+      description: This API endpoint allows an existing user to log in.
+      operationId: userLogin
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/login_php_body'
+        required: true
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_200_1'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_400'
+        "401":
+          description: Unauthorized - Invalid username or password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_401'
+        "405":
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_405'
+      security:
+      - ApiKeyAuth: []
+
+      /get_user_posts.php:
+    get:
+      tags:
+      - User Management
+      summary: Retrieve posts from a user and their friends
+      description: This API endpoint fetches posts made by the authenticated user and their friends.
+      operationId: getUserPosts
+      security:
+      - bearerAuth: []
+      responses:
+        "200":
+          description: Successfully retrieved posts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  posts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 123
+                        body:
+                          type: string
+                          example: "This is a sample post."
+                        added_by:
+                          type: string
+                          example: "john_doe"
+                        date_added:
+                          type: string
+                          format: date-time
+                          example: "2024-02-01T12:00:00Z"
+                        first_name:
+                          type: string
+                          example: "John"
+                        last_name:
+                          type: string
+                          example: "Doe"
+                        profile_pic:
+                          type: string
+                          example: "https://test.hapifyme.com/profile_pics/john_doe.jpg"
+        "401":
+          description: Unauthorized - Invalid or missing token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+                    example: Authorization token required
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+                    example: User not found
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+                    example: An error occurred while processing your request.
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  /user/get_profile.php:
+    get:
+      tags:
+      - User Management
+      summary: Get User Profile by Id
+      description: Retrieves the profile of a specific user by their ID.
+      operationId: getProfile
+      parameters:
+      - name: user_id
+        in: query
+        description: The ID of the user whose profile is being retrieved.
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: integer
+      responses:
+        "200":
+          description: Profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_200'
+        "401":
+          description: Unauthorized - Invalid username or password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_401'
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_404'
+      security:
+      - ApiKeyAuth: []
+  /user/update_profile.php:
+    put:
+      tags:
+      - User Management
+      summary: Update User Profile
+      description: "Updates the profile information of an authenticated user (First name, Last name, Email, Profile picture) using the user Id."
+      operationId: updateProfile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update_profile_php_body'
+        required: true
+      responses:
+        "200":
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_200'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_400'
+        "401":
+          description: Unauthorized - Invalid username or password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_401'
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_404'
+      security:
+      - ApiKeyAuth: []
+  /user/delete_profile.php:
+    delete:
+      tags:
+      - User Management
+      summary: Delete user profile
+      description: This API allows an authenticated user to delete their profile based on the apiKey provided.
+      operationId: deleteProfile
+      responses:
+        "200":
+          description: Profile deletion successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_200_6'
+        "401":
+          description: Unauthorized - Invalid username or password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_401_2'
+        "405":
+          description: Invalid request method
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_405_2'
+      security:
+      - ApiKeyAuth: []
+components:
+  schemas:
+    register_php_body:
+      required:
+      - email
+      - first_name
+      - last_name
+      - password
+      type: object
+      properties:
+        first_name:
+          type: string
+          description: First name of the user
+          example: Jane
+        last_name:
+          type: string
+          description: Last name of the user
+          example: Doe
+        email:
+          type: string
+          description: Email address of the user
+          format: email
+          example: jane.doe@example.com
+        password:
+          type: string
+          description: |
+            Password must meet the following criteria:
+            - Minimum length: 8 characters
+            - At least one uppercase letter
+            - At least one lowercase letter
+            - At least one number
+            - At least one special character (!@#$%^&*(),.?":{}|<>)
+            - Cannot contain whitespace or any of the following characters: ; : ' " \ / [ ] { } ~ - _
+          format: password
+    inline_response_200:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        message:
+          type: string
+          example: Profile retrieved successfully.
+    inline_response_400:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: All fields are required.
+    inline_response_409:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: Email or Username already taken.
+    login_php_body:
+      required:
+      - password
+      - username
+      type: object
+      properties:
+        username:
+          type: string
+          description: Unique username of the user
+        password:
+          type: string
+          description: Password for the user account
+    inline_response_200_1:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        message:
+          type: string
+          example: Login successful.
+        user:
+          $ref: '#/components/schemas/inline_response_200_1_user'
+    inline_response_401:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: Invalid username or password.
+    inline_response_405:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: Method not allowed.
+    inline_response_404:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: User not found.
+    update_profile_php_body:
+      type: object
+      properties:
+        user_id:
+          type: integer
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+        profile_pic:
+          type: string
+    SuccessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        message:
+          type: string
+          example: Password reset link has been sent to your email.
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: Description of the error.
+    SuccessResponseToken:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        message:
+          type: string
+          example: Email confirmed successfully. You can now log in.
+      description: The response sent when the email confirmation succeeds.
+    ErrorResponseTokenMissing:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: Confirmation token is required.
+      description: The response sent when no token is provided in the request.
+    ErrorResponseTokenInvalid:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: Invalid or expired confirmation token.
+      description: The response sent when the token is invalid or expired.
+    ErrorResponseServer:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: An error occurred while processing your request. Please try again later.
+      description: The response sent when an internal server error occurs.
+    inline_response_201:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        message:
+          type: string
+          example: User registered successfully. Use the token to confirm your account.
+        api_key:
+          type: string
+          example: 1234567890abcdef1234567890abcdef12345678
+        confirmation_token:
+          type: string
+          example: abcdef1234567890abcdef1234567890
+        username:
+          type: string
+          example: john_doe
+        user_id:
+          type: integer
+          example: 1
+    inline_response_400_1:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          enum:
+          - "Password, email, first name, and last name are required."
+          - "Password must be at least 8 characters long and include uppercase letters, lowercase letters, numbers, and special characters."
+    inline_response_409_1:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: Email already exists.
+    inline_response_500:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: Internal server error. Please try again later.
+    inline_response_400_2:
+      oneOf:
+      - $ref: '#/components/schemas/ErrorResponseTokenMissing'
+      - $ref: '#/components/schemas/ErrorResponseTokenInvalid'
+    inline_response_200_2:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        confirmation_token:
+          type: string
+          example: your_confirmation_token_here
+    inline_response_400_3:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: Username or Email is required.
+    inline_response_403:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: Invalid API key.
+    inline_response_404_1:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: No confirmation token found for the provided username or email.
+    inline_response_405_1:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: Method Not Allowed.
+    inline_response_500_1:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: "Internal Server Error: <error_message>"
+    user_request_password_reset_php_body:
+      required:
+      - email
+      type: object
+      properties:
+        email:
+          type: string
+          description: The user's email address.
+          format: email
+    inline_response_200_3:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        reset_token:
+          type: string
+          description: The token used to reset the password.
+    inline_response_400_4:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+    user_reset_password_php_body:
+      required:
+      - new_password
+      - token
+      type: object
+      properties:
+        token:
+          type: string
+          description: The password reset token received by the user.
+          format: password
+        new_password:
+          type: string
+          description: |
+            The new password for the user. Password must be at least 8 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character.
+          format: password
+          example: Password123!
+    inline_response_200_4:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        message:
+          type: string
+          example: Password updated successfully.
+    inline_response_400_5:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: "Password must be at least 8 characters long and include \nuppercase letters, lowercase letters, numbers, and special characters.\n"
+    inline_response_401_1:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: API key is required or Invalid or inactive API key.
+    inline_response_403_1:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: Invalid or expired reset token.
+    inline_response_200_5:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        message:
+          type: string
+          example: System is healthy
+        services:
+          $ref: '#/components/schemas/inline_response_200_5_services'
+    inline_response_500_2:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: System has issues
+        services:
+          $ref: '#/components/schemas/inline_response_500_2_services'
+    inline_response_200_6:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        message:
+          type: string
+          example: User profile deleted successfully.
+    inline_response_401_2:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: Unauthorized - Invalid username or password.
+    inline_response_405_2:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: Invalid request method. Use DELETE.
+    inline_response_200_1_user:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        first_name:
+          type: string
+          example: George
+        last_name:
+          type: string
+          example: Datcu
+        username:
+          type: string
+          example: george.datcu
+        email:
+          type: string
+          example: george.datcu@hotmail.com
+        signup_date:
+          type: string
+          format: date
+          example: 2024-09-24
+        profile_pic:
+          type: string
+          example: /images/profile_pics/default.jpg
+    inline_response_200_5_services_disk_space:
+      type: object
+      properties:
+        status:
+          type: string
+          example: operational
+        free_space_mb:
+          type: number
+          example: 12000
+    inline_response_200_5_services:
+      type: object
+      properties:
+        database:
+          type: string
+          example: operational
+        file_system:
+          type: string
+          example: operational
+        external_api:
+          type: string
+          example: operational
+        disk_space:
+          $ref: '#/components/schemas/inline_response_200_5_services_disk_space'
+    inline_response_500_2_services_disk_space:
+      type: object
+      properties:
+        status:
+          type: string
+          example: low space
+        free_space_mb:
+          type: number
+          example: 80
+    inline_response_500_2_services:
+      type: object
+      properties:
+        database:
+          type: string
+          example: down
+        file_system:
+          type: string
+          example: down
+        external_api:
+          type: string
+          example: down
+        disk_space:
+          $ref: '#/components/schemas/inline_response_500_2_services_disk_space'
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      name: Authorization
+      in: header

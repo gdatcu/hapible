@@ -1,0 +1,1347 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Hapible API",
+    "version": "1.0.0",
+    "description": "Hapible is a dynamic job application platform designed to streamline the connection between employers and job seekers. It offers a comprehensive suite of tools for managing user accounts, posting job opportunities, and processing applications efficiently."
+  },
+  "servers": [
+    {
+      "url": "{baseUrl}",
+      "description": "API Server",
+      "variables": {
+        "baseUrl": {
+          "default": "apps.qualiadept.eu/hapible/api",
+          "description": "The base URL for the Hapible API."
+        }
+      }
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Base64EncodedToken",
+        "description": "Uses the 'authToken' from the login response. The token is a Base64 encoded string of 'user_id:role'."
+      }
+    },
+    "schemas": {
+      "RegisterRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Dynamic User 1625070000000",
+            "description": "User's full name."
+          },
+          "username": {
+            "type": "string",
+            "example": "dynamic_user_1625070000000_1234",
+            "description": "User's chosen username."
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "dynamic_1625070000000_1234@example.com",
+            "description": "User's email address."
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "example": "testpass",
+            "description": "User's password."
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "jobseeker",
+              "employer",
+              "admin"
+            ],
+            "example": "jobseeker",
+            "description": "User's role in the system."
+          },
+          "company_name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Company name, required if role is 'employer'.",
+            "example": "Tech Solutions Inc."
+          }
+        },
+        "required": [
+          "name",
+          "username",
+          "email",
+          "password",
+          "role"
+        ]
+      },
+      "LoginRequest": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "example": "admin"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "example": "admin123"
+          }
+        },
+        "required": [
+          "username",
+          "password"
+        ]
+      },
+      "UserUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "ID of the user to update.",
+            "example": 1
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "updated_dynamic_1625070000000_1234@example.com"
+          },
+          "username": {
+            "type": "string",
+            "example": "updated_dynamic_user_1625070000000_1234"
+          },
+          "company_name": {
+            "type": "string",
+            "nullable": true,
+            "example": "Updated Company Name"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "username"
+        ]
+      },
+      "JobCreateRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Dynamic Job 1625070000000"
+          },
+          "description": {
+            "type": "string",
+            "example": "Develop cutting-edge software solutions."
+          },
+          "employer_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "ID of the employer posting the job.",
+            "example": 2
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "example": "2025-12-31"
+          }
+        },
+        "required": [
+          "title",
+          "description",
+          "employer_id"
+        ]
+      },
+      "JobUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "ID of the job to update."
+          },
+          "title": {
+            "type": "string",
+            "example": "Updated Software Engineer Role"
+          },
+          "description": {
+            "type": "string",
+            "example": "Updated description for cutting-edge software solutions."
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "example": "2026-01-31"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description"
+        ]
+      },
+      "JobStatusUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ]
+      },
+      "JobRenewRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "JobActionRequest": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "create",
+              "update",
+              "updateStatus",
+              "renew"
+            ],
+            "description": "The action to perform on the job."
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Job ID (required for update, updateStatus, renew)."
+          },
+          "title": {
+            "type": "string",
+            "description": "Job title (required for create, update)."
+          },
+          "description": {
+            "type": "string",
+            "description": "Job description (required for create, update)."
+          },
+          "employer_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Employer ID (required for create)."
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive"
+            ],
+            "description": "Job status (required for updateStatus)."
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "JobDeleteByIdRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "ID of the job to delete."
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "ApplicationCreateRequest": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "ID of the job being applied for."
+          },
+          "user_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "ID of the user applying."
+          },
+          "message": {
+            "type": "string",
+            "example": "I am very interested in this position."
+          },
+          "resume": {
+            "type": "string",
+            "format": "binary",
+            "description": "The resume file."
+          }
+        },
+        "required": [
+          "job_id",
+          "user_id",
+          "message",
+          "resume"
+        ]
+      },
+      "ApplicationStatusUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "integer",
+            "format": "int64",
+            "example": 101
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "reviewed",
+              "accepted",
+              "rejected"
+            ],
+            "example": "reviewed"
+          }
+        },
+        "required": [
+          "application_id",
+          "status"
+        ]
+      },
+      "ApplicationLogDownloadRequest": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "ID of the user who downloaded the resume.",
+            "example": 2
+          },
+          "application_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "ID of the application whose resume was downloaded.",
+            "example": 101
+          }
+        },
+        "required": [
+          "user_id",
+          "application_id"
+        ]
+      },
+      "ApplicationDeleteByIdRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "ID of the application to delete."
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "AdminUpdateRoleRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "ID of the user whose role is to be updated.",
+            "example": 3
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "employer",
+              "jobseeker"
+            ],
+            "example": "admin"
+          }
+        },
+        "required": [
+          "id",
+          "role"
+        ]
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "username": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "employer",
+              "jobseeker"
+            ]
+          },
+          "company_name": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "example": {
+          "id": 1,
+          "username": "dynamic_user_1625070000000_1234",
+          "name": "Dynamic User 1625070000000",
+          "email": "dynamic_1625070000000_1234@example.com",
+          "role": "jobseeker",
+          "company_name": null
+        }
+      },
+      "LoginResponse": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Base64 encoded 'user_id:role'. Use this as Bearer token.",
+            "example": "MTpham9ic2Vla2Vy"
+          },
+          "api_key": {
+            "type": "string",
+            "description": "User's API key (Note: Postman collection mentions this is leaked, consider security implications).",
+            "example": "some_api_key_string"
+          }
+        }
+      },
+      "Job": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "employer_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "company_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive"
+            ]
+          }
+        },
+        "example": {
+          "id": 1,
+          "title": "Dynamic Job 1625070000000",
+          "description": "Develop cutting-edge software solutions.",
+          "employer_id": 2,
+          "expires_at": "2025-12-31",
+          "created_at": "2023-10-27T10:00:00Z",
+          "company_name": "Employer Inc.",
+          "status": "active"
+        }
+      },
+      "Application": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "job_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "user_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "resume": {
+            "type": "string",
+            "nullable": true,
+            "example": "/uploads/resumes/resume_101.pdf"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "reviewed",
+              "accepted",
+              "rejected"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "job_title": {
+            "type": "string",
+            "nullable": true
+          },
+          "user_name": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "example": {
+          "id": 101,
+          "job_id": 1,
+          "user_id": 3,
+          "message": "I am very interested in this position.",
+          "resume": "/uploads/resumes/resume_101.pdf",
+          "status": "pending",
+          "created_at": "2023-10-27T11:00:00Z",
+          "job_title": "Dynamic Job 1625070000000",
+          "user_name": "Dynamic User 1625070000000"
+        }
+      },
+      "ApplicationStatistics": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "description": "Total number of applications for the given date."
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Date for which statistics are provided."
+          }
+        },
+        "example": {
+          "total": 5,
+          "date": "2023-10-27"
+        }
+      },
+      "SuccessResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "string"
+          }
+        },
+        "example": {
+          "success": "Operation successful"
+        }
+      },
+      "SuccessResumeResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "string",
+            "example": "Application submitted"
+          },
+          "resume": {
+            "type": "string",
+            "description": "Path to the uploaded resume.",
+            "example": "/uploads/resumes/dynamic_user_1625070000000_1234_resume.pdf"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "details": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "example": {
+          "error": "Invalid request",
+          "details": "Missing required fields."
+        }
+      }
+    }
+  },
+  "paths": {
+    "/register": {
+      "post": {
+        "summary": "Register User",
+        "description": "Registers a new user account with dynamically generated username and email to ensure uniqueness.",
+        "tags": [
+          "Authentication & Registration"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User registration status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth": {
+      "post": {
+        "summary": "Login User",
+        "description": "Authenticates a user. Tries to use the last registered user's credentials, otherwise defaults to 'admin'.",
+        "tags": [
+          "Authentication & Registration"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful, token and API key received.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users": {
+      "get": {
+        "summary": "Get User Details",
+        "description": "Retrieves the details of a specific user by their ID.",
+        "tags": [
+          "User Management"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "description": "The ID of the user to retrieve.",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "example": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User details retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Update User Details",
+        "description": "Updates the profile information for a specified user.",
+        "tags": [
+          "User Management"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/UserUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User updated successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request (e.g., validation error).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs": {
+      "get": {
+        "summary": "List All Jobs",
+        "description": "Retrieves a list of all available job postings.",
+        "tags": [
+          "Job Management"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of job postings.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Job"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Manage Job Postings (Create, Update, Status, Renew)",
+        "description": "Handles multiple job management actions based on the 'action' parameter in the request body.\n- `create`: Creates a new job. Requires `title`, `description`, `employer_id`. `expires_at` is optional.\n- `update`: Updates an existing job. Requires `id`, `title`, `description`. `expires_at` is optional.\n- `updateStatus`: Updates job status. Requires `id`, `status`.\n- `renew`: Renews a job. Requires `id`.\nThe Postman collection also implies a 'delete' action via POST to this endpoint.\n",
+        "tags": [
+          "Job Management"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/JobActionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Job action successful.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request (e.g., missing parameters for action, validation error).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Job",
+        "description": "Deletes a job posting by its ID.\nThe Postman collection has this as a DELETE request with an x-www-form-urlencoded body containing the 'id'.\nNote: Using a request body with DELETE is non-standard for OpenAPI 3.0.0 and some HTTP clients/servers.\nPath parameters (e.g., /jobs/{jobId}) are generally preferred for identifying the resource to delete.\n",
+        "tags": [
+          "Job Management"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job deleted successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request (e.g., missing job ID).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (e.g., cannot delete job with existing applications).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/apply": {
+      "get": {
+        "summary": "Get Applications or Statistics",
+        "description": "Retrieves job applications based on various filters or application statistics.\nProvide one of: `job_id`, `user_id`, `all=true`.\nOr provide `days` for statistics.\nCan also filter by `status`, `job` (title search), `user` (name search).\n",
+        "tags": [
+          "Application Management"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "query",
+            "description": "Filter applications by job ID.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "description": "Filter applications by user ID.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "example": 1
+            }
+          },
+          {
+            "name": "all",
+            "in": "query",
+            "description": "Set to true to retrieve all applications.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "description": "Number of days for which to retrieve application statistics.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 7
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter applications by their status.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "reviewed",
+                "accepted",
+                "rejected"
+              ]
+            }
+          },
+          {
+            "name": "job",
+            "in": "query",
+            "description": "Search applications by job title (partial match).",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "user",
+            "in": "query",
+            "description": "Search applications by user name (partial match).",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of applications or application statistics.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Application"
+                      }
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ApplicationStatistics"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Submit Application, Update Status, or Log Download",
+        "description": "Handles multiple application-related actions:\n1. Submit a new application (default action, uses `multipart/form-data`).\n2. Update application status (if `updateStatus=true` query param is present, uses `application/json` body).\n3. Log a resume download (if `logDownload=true` query param is present, uses `application/json` body).\n",
+        "tags": [
+          "Application Management"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "updateStatus",
+            "in": "query",
+            "description": "Set to true to update application status. Changes request body to JSON.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "logDownload",
+            "in": "query",
+            "description": "Set to true to log a resume download. Changes request body to JSON.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Body varies based on action (submit vs. updateStatus vs. logDownload).",
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationCreateRequest"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/ApplicationStatusUpdateRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ApplicationLogDownloadRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Application action successful.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResumeResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request (e.g., missing parameters, validation error).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Application",
+        "description": "Deletes a specific job application by its ID.\nThe Postman collection has this as a DELETE request with an x-www-form-urlencoded body containing the 'id'.\nNote: Using a request body with DELETE is non-standard for OpenAPI 3.0.0.\n",
+        "tags": [
+          "Application Management"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "applicationId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Application deleted successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request (e.g., missing application ID).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin": {
+      "post": {
+        "summary": "Update User Role (Admin)",
+        "description": "Allows an administrator to update the role of any user. Requires logged-in admin user.",
+        "tags": [
+          "Admin Functionality"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminUpdateRoleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User role updated successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request (e.g., invalid ID or role).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (e.g., logged-in user is not an admin).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Authentication & Registration",
+      "description": "Operations related to user account creation and login."
+    },
+    {
+      "name": "User Management",
+      "description": "Operations for retrieving and updating user profile information."
+    },
+    {
+      "name": "Job Management",
+      "description": "Operations for creating, updating, listing, and managing job postings."
+    },
+    {
+      "name": "Application Management",
+      "description": "Operations for submitting job applications, retrieving application details, and managing application statuses."
+    },
+    {
+      "name": "Admin Functionality",
+      "description": "Administrative tasks, such as updating user roles."
+    }
+  ]
+}

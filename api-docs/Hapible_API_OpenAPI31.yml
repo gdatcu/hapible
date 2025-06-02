@@ -1,0 +1,929 @@
+openapi: 3.0.0
+info:
+  title: Hapible API
+  version: '1.0.0'
+  description: Hapible is a dynamic job application platform designed to streamline the connection between employers and job seekers. It offers a comprehensive suite of tools for managing user accounts, posting job opportunities, and processing applications efficiently.
+servers:
+  - url: '{baseUrl}'
+    description: API Server
+    variables:
+      baseUrl:
+        default: apps.qualiadept.eu/hapible/api # Default from Postman collection, can be overridden
+        description: The base URL for the Hapible API.
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Base64EncodedToken # As per Postman setup: user_id:role base64 encoded
+      description: "Uses the 'authToken' from the login response. The token is a Base64 encoded string of 'user_id:role'."
+
+  schemas:
+    # Request Schemas
+    RegisterRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Dynamic User 1625070000000"
+          description: User's full name.
+        username:
+          type: string
+          example: "dynamic_user_1625070000000_1234"
+          description: User's chosen username.
+        email:
+          type: string
+          format: email
+          example: "dynamic_1625070000000_1234@example.com"
+          description: User's email address.
+        password:
+          type: string
+          format: password
+          example: "testpass"
+          description: User's password.
+        role:
+          type: string
+          enum: [jobseeker, employer, admin]
+          example: "jobseeker"
+          description: User's role in the system.
+        company_name:
+          type: string
+          nullable: true
+          description: Company name, required if role is 'employer'.
+          example: "Tech Solutions Inc."
+      required:
+        - name
+        - username
+        - email
+        - password
+        - role
+
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          example: "admin"
+        password:
+          type: string
+          format: password
+          example: "admin123"
+      required:
+        - username
+        - password
+
+    UserUpdateRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: ID of the user to update.
+          example: 1
+        email:
+          type: string
+          format: email
+          example: "updated_dynamic_1625070000000_1234@example.com"
+        username:
+          type: string
+          example: "updated_dynamic_user_1625070000000_1234"
+        company_name:
+          type: string
+          nullable: true
+          example: "Updated Company Name"
+      required:
+        - id
+        - email
+        - username
+
+    JobCreateRequest: # Used when action=create for POST /jobs
+      type: object
+      properties:
+        title:
+          type: string
+          example: "Dynamic Job 1625070000000"
+        description:
+          type: string
+          example: "Develop cutting-edge software solutions."
+        employer_id:
+          type: integer
+          format: int64
+          description: ID of the employer posting the job.
+          example: 2 # Assuming employer user ID
+        expires_at:
+          type: string
+          format: date
+          nullable: true
+          example: "2025-12-31"
+      required:
+        - title
+        - description
+        - employer_id
+
+    JobUpdateRequest: # Used when action=update for POST /jobs
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: ID of the job to update.
+        title:
+          type: string
+          example: "Updated Software Engineer Role"
+        description:
+          type: string
+          example: "Updated description for cutting-edge software solutions."
+        expires_at:
+          type: string
+          format: date
+          nullable: true
+          example: "2026-01-31"
+      required:
+        - id
+        - title
+        - description
+
+    JobStatusUpdateRequest: # Used when action=updateStatus for POST /jobs
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        status:
+          type: string
+          enum: [active, inactive]
+      required:
+        - id
+        - status
+
+    JobRenewRequest: # Used when action=renew for POST /jobs
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+      required:
+        - id
+
+    JobActionRequest: # Generic request for POST /jobs to handle multiple actions
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [create, update, updateStatus, renew] # Note: 'delete' via POST is also in Postman, handled separately or as part of this.
+          description: The action to perform on the job.
+        # Properties from other Job*Request schemas will be conditionally required based on 'action'
+        # OpenAPI 3.0.x doesn't perfectly model this conditionality within a single schema easily without `discriminator` or complex `oneOf/anyOf`
+        # For simplicity, listing common fields. The endpoint description will clarify.
+        id:
+          type: integer
+          format: int64
+          description: Job ID (required for update, updateStatus, renew).
+        title:
+          type: string
+          description: Job title (required for create, update).
+        description:
+          type: string
+          description: Job description (required for create, update).
+        employer_id:
+          type: integer
+          format: int64
+          description: Employer ID (required for create).
+        expires_at:
+          type: string
+          format: date
+          nullable: true
+        status:
+          type: string
+          enum: [active, inactive]
+          description: Job status (required for updateStatus).
+      required:
+        - action
+
+    JobDeleteByIdRequest: # For DELETE /jobs (if using request body, which is non-standard for DELETE)
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: ID of the job to delete.
+      required:
+        - id
+
+    ApplicationCreateRequest:
+      type: object
+      properties:
+        job_id:
+          type: integer
+          format: int64
+          description: ID of the job being applied for.
+        user_id:
+          type: integer
+          format: int64
+          description: ID of the user applying.
+        message:
+          type: string
+          example: "I am very interested in this position."
+        resume:
+          type: string
+          format: binary # Indicates a file upload
+          description: The resume file.
+      required:
+        - job_id
+        - user_id
+        - message
+        - resume
+
+    ApplicationStatusUpdateRequest: # For POST /apply?updateStatus=true
+      type: object
+      properties:
+        application_id:
+          type: integer
+          format: int64
+          example: 101
+        status:
+          type: string
+          enum: [pending, reviewed, accepted, rejected]
+          example: "reviewed"
+      required:
+        - application_id
+        - status
+
+    ApplicationLogDownloadRequest: # For POST /apply?logDownload=true
+      type: object
+      properties:
+        user_id:
+          type: integer
+          format: int64
+          description: ID of the user who downloaded the resume.
+          example: 2 # Employer/Admin ID
+        application_id:
+          type: integer
+          format: int64
+          description: ID of the application whose resume was downloaded.
+          example: 101
+      required:
+        - user_id
+        - application_id
+
+    ApplicationDeleteByIdRequest: # For DELETE /apply (if using request body)
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: ID of the application to delete.
+      required:
+        - id
+
+    AdminUpdateRoleRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: ID of the user whose role is to be updated.
+          example: 3
+        role:
+          type: string
+          enum: [admin, employer, jobseeker]
+          example: "admin"
+      required:
+        - id
+        - role
+
+    # Response Schemas
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        username:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [admin, employer, jobseeker]
+        company_name:
+          type: string
+          nullable: true
+      example:
+        id: 1
+        username: "dynamic_user_1625070000000_1234"
+        name: "Dynamic User 1625070000000"
+        email: "dynamic_1625070000000_1234@example.com"
+        role: "jobseeker"
+        company_name: null
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: "Base64 encoded 'user_id:role'. Use this as Bearer token."
+          example: "MTpham9ic2Vla2Vy" # Example for 1:jobseeker
+        api_key:
+          type: string
+          description: "User's API key (Note: Postman collection mentions this is leaked, consider security implications)."
+          example: "some_api_key_string"
+
+    Job:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        description:
+          type: string
+        employer_id:
+          type: integer
+          format: int64
+        expires_at:
+          type: string
+          format: date
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        company_name:
+          type: string
+          nullable: true # Joined from users table
+        status:
+          type: string
+          enum: [active, inactive]
+      example:
+        id: 1
+        title: "Dynamic Job 1625070000000"
+        description: "Develop cutting-edge software solutions."
+        employer_id: 2
+        expires_at: "2025-12-31"
+        created_at: "2023-10-27T10:00:00Z"
+        company_name: "Employer Inc."
+        status: "active"
+
+    Application:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        job_id:
+          type: integer
+          format: int64
+        user_id:
+          type: integer
+          format: int64
+        message:
+          type: string
+          nullable: true
+        resume: # This would be a path or URL to the resume
+          type: string
+          nullable: true
+          example: "/uploads/resumes/resume_101.pdf"
+        status:
+          type: string
+          enum: [pending, reviewed, accepted, rejected]
+        created_at:
+          type: string
+          format: date-time
+        job_title: # Joined data
+          type: string
+          nullable: true
+        user_name: # Joined data
+          type: string
+          nullable: true
+      example:
+        id: 101
+        job_id: 1
+        user_id: 3
+        message: "I am very interested in this position."
+        resume: "/uploads/resumes/resume_101.pdf"
+        status: "pending"
+        created_at: "2023-10-27T11:00:00Z"
+        job_title: "Dynamic Job 1625070000000"
+        user_name: "Dynamic User 1625070000000"
+
+    ApplicationStatistics:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Total number of applications for the given date.
+        date:
+          type: string
+          format: date
+          description: Date for which statistics are provided.
+      example:
+        total: 5
+        date: "2023-10-27"
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: string
+      example:
+        success: "Operation successful"
+
+    SuccessResumeResponse: # For apply for job
+      type: object
+      properties:
+        success:
+          type: string
+          example: "Application submitted"
+        resume:
+          type: string
+          description: Path to the uploaded resume.
+          example: "/uploads/resumes/dynamic_user_1625070000000_1234_resume.pdf"
+
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        details: # Optional, as seen in some Postman descriptions
+          type: string
+          nullable: true
+      example:
+        error: "Invalid request"
+        details: "Missing required fields."
+
+paths:
+  /register:
+    post:
+      summary: Register User
+      description: Registers a new user account with dynamically generated username and email to ensure uniqueness.
+      tags:
+        - Authentication & Registration
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '200':
+          description: User registration status.
+          content:
+            application/json:
+              schema:
+                oneOf: # Based on Postman test script expecting `success` or implying error
+                  - $ref: '#/components/schemas/SuccessResponse' # e.g. {"success": "User registered"}
+                  - $ref: '#/components/schemas/ErrorResponse'   # e.g. {"error": "Failed to register"}
+        '500':
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth:
+    post:
+      summary: Login User
+      description: Authenticates a user. Tries to use the last registered user's credentials, otherwise defaults to 'admin'.
+      tags:
+        - Authentication & Registration
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful, token and API key received.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users:
+    get:
+      summary: Get User Details
+      description: Retrieves the details of a specific user by their ID.
+      tags:
+        - User Management
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: query
+          required: true # Postman sends it, implies required
+          description: The ID of the user to retrieve.
+          schema:
+            type: integer
+            format: int64
+            example: 1 # {{loggedInUserId}}
+      responses:
+        '200':
+          description: User details retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Update User Details
+      description: Updates the profile information for a specified user.
+      tags:
+        - User Management
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+      responses:
+        '200':
+          description: User updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse' # e.g. {"success": "User updated"}
+        '400':
+          description: Bad request (e.g., validation error).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /jobs:
+    get:
+      summary: List All Jobs
+      description: Retrieves a list of all available job postings.
+      tags:
+        - Job Management
+      security:
+        - bearerAuth: [] # Assuming jobs list needs auth
+      responses:
+        '200':
+          description: A list of job postings.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Job'
+        '500':
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Manage Job Postings (Create, Update, Status, Renew)
+      description: |
+        Handles multiple job management actions based on the 'action' parameter in the request body.
+        - `create`: Creates a new job. Requires `title`, `description`, `employer_id`. `expires_at` is optional.
+        - `update`: Updates an existing job. Requires `id`, `title`, `description`. `expires_at` is optional.
+        - `updateStatus`: Updates job status. Requires `id`, `status`.
+        - `renew`: Renews a job. Requires `id`.
+        The Postman collection also implies a 'delete' action via POST to this endpoint.
+      tags:
+        - Job Management
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/JobActionRequest' # This is a generic schema; specific fields depend on 'action'
+            # Example for 'create' action:
+            #   action: create
+            #   title: New Job Title
+            #   description: Job description here.
+            #   employer_id: 123
+            # Example for 'update' action:
+            #   action: update
+            #   id: 456
+            #   title: Updated Job Title
+            #   description: Updated description.
+      responses:
+        '200':
+          description: Job action successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse' # e.g. {"success": "Job created"}, {"success": "Job updated"}
+        '400':
+          description: Bad request (e.g., missing parameters for action, validation error).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete Job
+      description: |
+        Deletes a job posting by its ID.
+        The Postman collection has this as a DELETE request with an x-www-form-urlencoded body containing the 'id'.
+        Note: Using a request body with DELETE is non-standard for OpenAPI 3.0.0 and some HTTP clients/servers.
+        Path parameters (e.g., /jobs/{jobId}) are generally preferred for identifying the resource to delete.
+      tags:
+        - Job Management
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: jobId
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: Job deleted successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse' # e.g. {"success": "Job deleted"}
+        '400':
+          description: Bad request (e.g., missing job ID).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden (e.g., cannot delete job with existing applications).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /apply:
+    get:
+      summary: Get Applications or Statistics
+      description: |
+        Retrieves job applications based on various filters or application statistics.
+        Provide one of: `job_id`, `user_id`, `all=true`.
+        Or provide `days` for statistics.
+        Can also filter by `status`, `job` (title search), `user` (name search).
+      tags:
+        - Application Management
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: job_id
+          in: query
+          description: Filter applications by job ID.
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: user_id
+          in: query
+          description: Filter applications by user ID.
+          required: false
+          schema:
+            type: integer
+            format: int64
+            example: 1 # {{loggedInUserId}}
+        - name: all
+          in: query
+          description: Set to true to retrieve all applications.
+          required: false
+          schema:
+            type: boolean
+        - name: days
+          in: query
+          description: Number of days for which to retrieve application statistics.
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 7
+        - name: status
+          in: query
+          description: Filter applications by their status.
+          required: false
+          schema:
+            type: string
+            enum: [pending, reviewed, accepted, rejected]
+        - name: job # Job title search
+          in: query
+          description: Search applications by job title (partial match).
+          required: false
+          schema:
+            type: string
+        - name: user # User name search
+          in: query
+          description: Search applications by user name (partial match).
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A list of applications or application statistics.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/Application'
+                  - type: array # For statistics response
+                    items:
+                      $ref: '#/components/schemas/ApplicationStatistics'
+        '500':
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Submit Application, Update Status, or Log Download
+      description: |
+        Handles multiple application-related actions:
+        1. Submit a new application (default action, uses `multipart/form-data`).
+        2. Update application status (if `updateStatus=true` query param is present, uses `application/json` body).
+        3. Log a resume download (if `logDownload=true` query param is present, uses `application/json` body).
+      tags:
+        - Application Management
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: updateStatus
+          in: query
+          description: Set to true to update application status. Changes request body to JSON.
+          required: false
+          schema:
+            type: boolean
+        - name: logDownload
+          in: query
+          description: Set to true to log a resume download. Changes request body to JSON.
+          required: false
+          schema:
+            type: boolean
+      requestBody:
+        description: Body varies based on action (submit vs. updateStatus vs. logDownload).
+        required: true
+        content:
+          multipart/form-data: # Default for submitting new application
+            schema:
+              $ref: '#/components/schemas/ApplicationCreateRequest'
+            # Postman indicates resume is type: file, src: /path/to/your/resume.pdf
+            # This is correctly represented by format: binary in ApplicationCreateRequest
+          application/json: # Used if updateStatus=true or logDownload=true
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/ApplicationStatusUpdateRequest'
+                - $ref: '#/components/schemas/ApplicationLogDownloadRequest'
+      responses:
+        '200':
+          description: Application action successful.
+          content:
+            application/json:
+              schema:
+                oneOf: # Response varies slightly
+                  - $ref: '#/components/schemas/SuccessResumeResponse' # For new application submission
+                  - $ref: '#/components/schemas/SuccessResponse' # For status update or log download
+        '400':
+          description: Bad request (e.g., missing parameters, validation error).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete Application
+      description: |
+        Deletes a specific job application by its ID.
+        The Postman collection has this as a DELETE request with an x-www-form-urlencoded body containing the 'id'.
+        Note: Using a request body with DELETE is non-standard for OpenAPI 3.0.0.
+      tags:
+        - Application Management
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: applicationId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Application deleted successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse' # e.g. {"success": "Application deleted"}
+        '400':
+          description: Bad request (e.g., missing application ID).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin:
+    post:
+      summary: Update User Role (Admin)
+      description: Allows an administrator to update the role of any user. Requires logged-in admin user.
+      tags:
+        - Admin Functionality
+      security:
+        - bearerAuth: [] # Admin role check should be handled by the backend
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AdminUpdateRoleRequest'
+      responses:
+        '200':
+          description: User role updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse' # e.g. {"success": "User role updated"}
+        '400':
+          description: Bad request (e.g., invalid ID or role).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden (e.g., logged-in user is not an admin).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+tags:
+  - name: Authentication & Registration
+    description: Operations related to user account creation and login.
+  - name: User Management
+    description: Operations for retrieving and updating user profile information.
+  - name: Job Management
+    description: Operations for creating, updating, listing, and managing job postings.
+  - name: Application Management
+    description: Operations for submitting job applications, retrieving application details, and managing application statuses.
+  - name: Admin Functionality
+    description: Administrative tasks, such as updating user roles.

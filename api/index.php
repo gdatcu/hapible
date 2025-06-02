@@ -24,6 +24,10 @@ switch ($endpoint) {
     case 'apply': ApplicationController::handle(); break;
     case 'admin': AdminController::handle(); break;
 	case 'register': RegisterController::handle(); break;
+    // Add the route for /hapible/api/apply/getJobs
+    case 'getJobs': 
+        ApplicationController::getJobs(); 
+        break;
 
     default:
     echo json_encode([
