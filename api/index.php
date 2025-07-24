@@ -4,7 +4,7 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 // --- Permite cereri CORS (Cross-Origin Resource Sharing) ---
-header("Access-Control-Allow-Origin: *"); // Permite cereri de la orice origine. Pentru producție, poți înlocui * cu http://localhost:5173
+header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
 header("Access-Control-Allow-Methods: POST, GET, OPTIONS, DELETE, PUT");
 header("Access-Control-Max-Age: 3600");
@@ -14,40 +14,48 @@ header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     exit(0);
 }
-// --- Sfârșitul blocului CORS ---
-header("Content-Type: application/json");
 
-// Include all controllers
-require __DIR__ . '/controllers/AuthController.php';
-require __DIR__ . '/controllers/UserController.php';
-require __DIR__ . '/controllers/JobController.php';
-require __DIR__ . '/controllers/ApplicationController.php';
-require __DIR__ . '/controllers/AdminController.php';
-require __DIR__ . '/controllers/RegisterController.php';
+// --- LOGICĂ DE RUTARE ROBUSTĂ ---
 
-// Get path (e.g. /api/auth)
-$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$segments = explode("/", trim($uri, "/"));
+// Get the request URI and split it into parts
+$request_uri = explode('/', trim($_SERVER['REQUEST_URI'], '/'));
 
-// Find the last segment (e.g. "auth", "users")
-$endpoint = end($segments); // This works regardless of depth
+// Find the position of "api" in the URI. This makes the code robust.
+$api_pos = array_search('api', $request_uri);
 
-switch ($endpoint) {
-    case 'auth': AuthController::handle(); break;
-    case 'users': UserController::handle(); break;
-    case 'jobs': JobController::handle(); break;
-    case 'apply': ApplicationController::handle(); break;
-    case 'admin': AdminController::handle(); break;
-	case 'register': RegisterController::handle(); break;
-    // Add the route for /hapible/api/apply/getJobs
-    case 'getJobs': 
-        ApplicationController::getJobs(); 
-        break;
-
-    default:
-    echo json_encode([
-        "error" => "Invalid API endpoint. Try /auth, /jobs, /users, /apply, or /admin"
-    ]);
-
+// The endpoint is the part of the URI that comes *after* "api".
+$endpoint = '';
+if ($api_pos !== false && isset($request_uri[$api_pos + 1])) {
+    // We also remove any potential query strings like ?param=1
+    $endpoint = strtok($request_uri[$api_pos + 1], '?');
 }
+
+// Route the request to the appropriate controller based on the dynamically found endpoint.
+switch ($endpoint) {
+    case 'auth':
+        require 'controllers/AuthController.php';
+        break;
+    case 'register':
+        require 'controllers/RegisterController.php';
+        break;
+    case 'jobs':
+        require 'controllers/JobController.php';
+        break;
+    case 'users':
+        require 'controllers/UserController.php';
+        break;
+    case 'apply':
+        require 'controllers/ApplicationController.php';
+        break;
+    case 'admin':
+        require 'controllers/AdminController.php';
+        break;
+    default:
+        // Invalid endpoint
+        http_response_code(404);
+        echo json_encode(array("error" => "Invalid API endpoint. Try /auth, /jobs, /users, /apply, or /admin"));
+        break;
+}
+
+
 ?>
