@@ -1,61 +1,57 @@
 <?php
+// Afișează erorile pentru a ajuta la depanare (poate fi eliminat în producție)
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 // --- Permite cereri CORS (Cross-Origin Resource Sharing) ---
+// Permite cereri de la orice origine. Pentru producție, poți înlocui * cu adresa aplicației tale.
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
 header("Access-Control-Allow-Methods: POST, GET, OPTIONS, DELETE, PUT");
 header("Access-Control-Max-Age: 3600");
 header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
 
-// Gestionează cererile de tip OPTIONS (preflight)
+// Browserele trimit o cerere de tip OPTIONS (preflight) înainte de POST/PUT etc.
+// Trebuie să răspundem cu succes la aceasta.
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
-    exit(0);
+    http_response_code(200);
+    exit();
 }
 
-// --- LOGICĂ DE RUTARE ROBUSTĂ ---
+// --- LOGICĂ DE RUTARE SIMPLĂ ȘI ROBUSTĂ ---
 
-// Get the request URI and split it into parts
-$request_uri = explode('/', trim($_SERVER['REQUEST_URI'], '/'));
+// Eliminăm orice query string (ex: ?id=123) din URI
+$request_path = strtok($_SERVER['REQUEST_URI'], '?');
 
-// Find the position of "api" in the URI. This makes the code robust.
-$api_pos = array_search('api', $request_uri);
+// Extragem ultimul segment din cale, care este endpoint-ul nostru (ex: 'auth', 'jobs')
+$endpoint = basename($request_path);
 
-// The endpoint is the part of the URI that comes *after* "api".
-$endpoint = '';
-if ($api_pos !== false && isset($request_uri[$api_pos + 1])) {
-    // We also remove any potential query strings like ?param=1
-    $endpoint = strtok($request_uri[$api_pos + 1], '?');
-}
-
-// Route the request to the appropriate controller based on the dynamically found endpoint.
+// Rutăm cererea către controller-ul corespunzător
 switch ($endpoint) {
     case 'auth':
-        require 'controllers/AuthController.php';
+        require __DIR__ . '/controllers/AuthController.php';
         break;
     case 'register':
-        require 'controllers/RegisterController.php';
+        require __DIR__ . '/controllers/RegisterController.php';
         break;
     case 'jobs':
-        require 'controllers/JobController.php';
+        require __DIR__ . '/controllers/JobController.php';
         break;
     case 'users':
-        require 'controllers/UserController.php';
+        require __DIR__ . '/controllers/UserController.php';
         break;
     case 'apply':
-        require 'controllers/ApplicationController.php';
+        require __DIR__ . '/controllers/ApplicationController.php';
         break;
     case 'admin':
-        require 'controllers/AdminController.php';
+        require __DIR__ . '/controllers/AdminController.php';
         break;
+    // Dacă endpoint-ul nu este găsit, returnăm o eroare 404
     default:
-        // Invalid endpoint
         http_response_code(404);
-        echo json_encode(array("error" => "Invalid API endpoint. Try /auth, /jobs, /users, /apply, or /admin"));
+        echo json_encode(["error" => "Endpoint not found. Last part of URL was: '" . htmlspecialchars($endpoint) . "'"]);
         break;
 }
-
 
 ?>
