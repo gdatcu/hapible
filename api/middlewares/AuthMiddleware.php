@@ -1,4 +1,8 @@
 <?php
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+
 class AuthMiddleware {
     public static function validateToken($token) {
         list($user_id, $role) = explode(":", base64_decode($token));
