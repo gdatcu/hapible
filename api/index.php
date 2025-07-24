@@ -9,6 +9,9 @@ require __DIR__ . '/controllers/ApplicationController.php';
 require __DIR__ . '/controllers/AdminController.php';
 require __DIR__ . '/controllers/RegisterController.php';
 
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
 // Get path (e.g. /api/auth)
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
