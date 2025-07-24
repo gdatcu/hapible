@@ -1,4 +1,17 @@
 <?php
+
+// --- Permite cereri CORS (Cross-Origin Resource Sharing) ---
+header("Access-Control-Allow-Origin: *"); // Permite cereri de la orice origine. Pentru producție, poți înlocui * cu http://localhost:5173
+header("Content-Type: application/json; charset=UTF-8");
+header("Access-Control-Allow-Methods: POST, GET, OPTIONS, DELETE, PUT");
+header("Access-Control-Max-Age: 3600");
+header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+
+// Gestionează cererile de tip OPTIONS (preflight)
+if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+    exit(0);
+}
+// --- Sfârșitul blocului CORS ---
 header("Content-Type: application/json");
 
 // Include all controllers
@@ -8,10 +21,6 @@ require __DIR__ . '/controllers/JobController.php';
 require __DIR__ . '/controllers/ApplicationController.php';
 require __DIR__ . '/controllers/AdminController.php';
 require __DIR__ . '/controllers/RegisterController.php';
-
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
 // Get path (e.g. /api/auth)
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
