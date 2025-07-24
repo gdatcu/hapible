@@ -1,8 +1,6 @@
 <?php
 // Asigură-te că aceste căi sunt corecte pentru structura ta
 require_once __DIR__ . '/../../config/config.php';
-// CORECTAT: Calea către vendor/autoload.php a fost ajustată.
-require_once __DIR__ . '/../vendor/autoload.php';
 
 use Firebase\JWT\JWT;
 
