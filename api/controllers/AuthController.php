@@ -6,15 +6,19 @@ use Firebase\JWT\JWT;
 
 class AuthController {
     public static function handle() {
-        // --- LOGICĂ ROBUSTĂ PENTRU A CITI DATELE DE INTRARE ---
+        // --- LOGICĂ ROBUSTĂ PENTRU A CITI DATELE DE INTRARE (VERSIUNEA 2) ---
         $data = [];
-        // Verificăm dacă request-ul este JSON (de la aplicația mobilă)
-        if (isset($_SERVER['CONTENT_TYPE']) && strpos($_SERVER['CONTENT_TYPE'], 'application/json') !== false) {
-            $json_data = file_get_contents('php://input');
-            $data = json_decode($json_data, true);
-        } else {
-            // Altfel, presupunem că este un formular standard (de la aplicația web)
+        // Prioritizăm $_POST, care este populat automat de PHP pentru formulare web.
+        if (!empty($_POST)) {
             $data = $_POST;
+        } else {
+            // Dacă $_POST este gol, încercăm să citim corpul cererii ca JSON (pentru aplicația mobilă).
+            $json_data = file_get_contents('php://input');
+            $decoded_data = json_decode($json_data, true);
+            // Ne asigurăm că decodarea a funcționat înainte de a suprascrie $data.
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $data = $decoded_data;
+            }
         }
 
         // Verificăm dacă email-ul și parola au fost furnizate
