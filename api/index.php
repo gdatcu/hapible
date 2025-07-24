@@ -1,57 +1,41 @@
 <?php
-// Afișează erorile pentru a ajuta la depanare (poate fi eliminat în producție)
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+header("Content-Type: application/json");
 
-// --- Permite cereri CORS (Cross-Origin Resource Sharing) ---
-// Permite cereri de la orice origine. Pentru producție, poți înlocui * cu adresa aplicației tale.
+// Include all controllers
+require __DIR__ . '/controllers/AuthController.php';
+require __DIR__ . '/controllers/UserController.php';
+require __DIR__ . '/controllers/JobController.php';
+require __DIR__ . '/controllers/ApplicationController.php';
+require __DIR__ . '/controllers/AdminController.php';
+require __DIR__ . '/controllers/RegisterController.php';
+
 header("Access-Control-Allow-Origin: *");
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: POST, GET, OPTIONS, DELETE, PUT");
-header("Access-Control-Max-Age: 3600");
-header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
-// Browserele trimit o cerere de tip OPTIONS (preflight) înainte de POST/PUT etc.
-// Trebuie să răspundem cu succes la aceasta.
-if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
-    http_response_code(200);
-    exit();
-}
+// Get path (e.g. /api/auth)
+$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$segments = explode("/", trim($uri, "/"));
 
-// --- LOGICĂ DE RUTARE SIMPLĂ ȘI ROBUSTĂ ---
+// Find the last segment (e.g. "auth", "users")
+$endpoint = end($segments); // This works regardless of depth
 
-// Eliminăm orice query string (ex: ?id=123) din URI
-$request_path = strtok($_SERVER['REQUEST_URI'], '?');
-
-// Extragem ultimul segment din cale, care este endpoint-ul nostru (ex: 'auth', 'jobs')
-$endpoint = basename($request_path);
-
-// Rutăm cererea către controller-ul corespunzător
 switch ($endpoint) {
-    case 'auth':
-        require __DIR__ . '/controllers/AuthController.php';
+    case 'auth': AuthController::handle(); break;
+    case 'users': UserController::handle(); break;
+    case 'jobs': JobController::handle(); break;
+    case 'apply': ApplicationController::handle(); break;
+    case 'admin': AdminController::handle(); break;
+	case 'register': RegisterController::handle(); break;
+    // Add the route for /hapible/api/apply/getJobs
+    case 'getJobs': 
+        ApplicationController::getJobs(); 
         break;
-    case 'register':
-        require __DIR__ . '/controllers/RegisterController.php';
-        break;
-    case 'jobs':
-        require __DIR__ . '/controllers/JobController.php';
-        break;
-    case 'users':
-        require __DIR__ . '/controllers/UserController.php';
-        break;
-    case 'apply':
-        require __DIR__ . '/controllers/ApplicationController.php';
-        break;
-    case 'admin':
-        require __DIR__ . '/controllers/AdminController.php';
-        break;
-    // Dacă endpoint-ul nu este găsit, returnăm o eroare 404
-    default:
-        http_response_code(404);
-        echo json_encode(["error" => "Endpoint not found. Last part of URL was: '" . htmlspecialchars($endpoint) . "'"]);
-        break;
-}
 
+    default:
+    echo json_encode([
+        "error" => "Invalid API endpoint. Try /auth, /jobs, /users, /apply, or /admin"
+    ]);
+
+}
 ?>
