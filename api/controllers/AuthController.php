@@ -24,12 +24,13 @@
 //         }
 //     }
 // }
-// ?>
+// 
 
 <?php
 // Asigură-te că aceste căi sunt corecte pentru structura ta
 require_once __DIR__ . '/../../config/config.php';
-require_once __DIR__ . '/../../vendor/autoload.php';
+// CORECTAT: Calea către vendor/autoload.php a fost ajustată.
+require_once __DIR__ . '/../vendor/autoload.php';
 
 use Firebase\JWT\JWT;
 
@@ -38,7 +39,7 @@ class AuthController {
         // --- LOGICĂ ROBUSTĂ PENTRU A CITI DATELE DE INTRARE ---
         $data = [];
         // Verificăm dacă request-ul este JSON (de la aplicația mobilă)
-        if (strpos($_SERVER['CONTENT_TYPE'], 'application/json') !== false) {
+        if (isset($_SERVER['CONTENT_TYPE']) && strpos($_SERVER['CONTENT_TYPE'], 'application/json') !== false) {
             $json_data = file_get_contents('php://input');
             $data = json_decode($json_data, true);
         } else {
@@ -111,4 +112,5 @@ class AuthController {
         }
     }
 }
+
 ?>
