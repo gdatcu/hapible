@@ -3,18 +3,18 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// // --- Permite cereri CORS (Cross-Origin Resource Sharing) ---
-// header("Access-Control-Allow-Origin: *"); // Permite cereri de la orice origine. Pentru producție, poți înlocui * cu http://localhost:5173
-// header("Content-Type: application/json; charset=UTF-8");
-// header("Access-Control-Allow-Methods: POST, GET, OPTIONS, DELETE, PUT");
-// header("Access-Control-Max-Age: 3600");
-// header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+// --- Permite cereri CORS (Cross-Origin Resource Sharing) ---
+header("Access-Control-Allow-Origin: *"); // Permite cereri de la orice origine. Pentru producție, poți înlocui * cu http://localhost:5173
+header("Content-Type: application/json; charset=UTF-8");
+header("Access-Control-Allow-Methods: POST, GET, OPTIONS, DELETE, PUT");
+header("Access-Control-Max-Age: 3600");
+header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
 
-// // Gestionează cererile de tip OPTIONS (preflight)
-// if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
-//     exit(0);
-// }
-// // --- Sfârșitul blocului CORS ---
+// Gestionează cererile de tip OPTIONS (preflight)
+if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+    exit(0);
+}
+// --- Sfârșitul blocului CORS ---
 header("Content-Type: application/json");
 
 // Include all controllers
