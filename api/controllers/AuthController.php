@@ -1,4 +1,5 @@
 <?php
+// Afișează erorile pentru a ajuta la depanare
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
@@ -7,27 +8,22 @@ require_once __DIR__ . '/../../config/config.php';
 
 class AuthController {
     public static function handle() {
-        // Verificăm dacă metoda este POST, la fel ca în codul tău original
         if ($_SERVER["REQUEST_METHOD"] == "POST") {
             self::login();
         } else {
-            // Dacă nu este POST, trimitem o eroare
             http_response_code(405); // Method Not Allowed
             echo json_encode(["error" => "Only POST method is accepted."]);
         }
     }
 
     public static function login() {
-        // Folosim conexiunea globală, la fel ca în codul tău
-        global $conn; 
+        global $conn;
 
         // --- LOGICĂ ROBUSTĂ PENTRU A CITI DATELE DE INTRARE ---
         $input = [];
-        // Prioritizăm $_POST (pentru aplicația web)
         if (!empty($_POST)) {
             $input = $_POST;
         } else {
-            // Dacă $_POST este gol, citim JSON (pentru aplicația mobilă)
             $json_input = file_get_contents('php://input');
             $decoded_input = json_decode($json_input, true);
             if (json_last_error() === JSON_ERROR_NONE) {
@@ -42,12 +38,9 @@ class AuthController {
             return;
         }
 
-        $password = $input['password'];
+        $password_from_user = $input['password'];
 
         // --- INTEROGARE SECURIZATĂ CU PREPARED STATEMENTS ---
-        // Aceasta previne atacurile de tip SQL Injection.
-        
-        // Stabilim dacă login-ul se face cu username sau email
         if (isset($input['username'])) {
             $login_identifier = $input['username'];
             $stmt = $conn->prepare("SELECT * FROM users WHERE username = ?");
@@ -68,35 +61,44 @@ class AuthController {
 
         if ($result->num_rows > 0) {
             $user = $result->fetch_assoc();
+            $password_from_db = $user['password'];
+            $is_password_correct = false;
 
-            // !!! AVERTISMENT IMPORTANT DE SECURITATE !!!
-            // Codul tău original compară parolele direct. Asta înseamnă că parolele
-            // sunt stocate în baza de date ca text clar, ceea ce este extrem de periculos.
-            // Pentru a menține compatibilitatea, am păstrat temporar această logică.
-            // Este VITAL să treci la `password_hash()` și `password_verify()` cât mai curând posibil.
-            
-            if ($password === $user['password']) { // Această linie este INSECURĂ!
+            // --- LOGICĂ DE VERIFICARE DUBLĂ PENTRU PAROLĂ ---
+            // Verificăm dacă parola din DB este hash-uită (începe cu '$')
+            if (preg_match('/^\$2y\$/', $password_from_db)) {
+                // Dacă este hash-uită, folosim password_verify (pentru utilizatorii noi)
+                $is_password_correct = password_verify($password_from_user, $password_from_db);
+            } else {
+                // Dacă nu este hash-uită, o comparăm direct (pentru utilizatorii vechi)
+                $is_password_correct = ($password_from_user === $password_from_db);
+            }
+
+            if ($is_password_correct) {
                 // Eliminăm parola din răspuns pentru securitate
                 unset($user['password']);
 
-                // Generăm token-ul simplu, la fel ca în codul tău
+                // Generăm token-ul simplu, la fel ca în codul tău original
                 $token = base64_encode($user["id"] . ":" . $user["role"]);
                 
                 http_response_code(200);
                 echo json_encode([
                     "message" => "Successful login.",
                     "token" => $token,
-                    "user" => $user // Trimitem și datele utilizatorului
+                    "user" => $user
                 ]);
 
             } else {
+                // Parola este incorectă
                 http_response_code(401);
                 echo json_encode(["error" => "Invalid credentials"]);
             }
         } else {
+            // Utilizatorul nu a fost găsit
             http_response_code(401);
             echo json_encode(["error" => "Invalid credentials"]);
         }
         $stmt->close();
     }
 }
+?>
