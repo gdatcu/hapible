@@ -1,88 +1,99 @@
 <?php
-// Asigură-te că aceste căi sunt corecte pentru structura ta
+// Folosim calea corectă, cu forward slashes
 require_once __DIR__ . '/../../config/config.php';
-
-use Firebase\JWT\JWT;
 
 class AuthController {
     public static function handle() {
-        // --- LOGICĂ ROBUSTĂ PENTRU A CITI DATELE DE INTRARE (VERSIUNEA 2) ---
-        $data = [];
-        // Prioritizăm $_POST, care este populat automat de PHP pentru formulare web.
-        if (!empty($_POST)) {
-            $data = $_POST;
+        // Verificăm dacă metoda este POST, la fel ca în codul tău original
+        if ($_SERVER["REQUEST_METHOD"] == "POST") {
+            self::login();
         } else {
-            // Dacă $_POST este gol, încercăm să citim corpul cererii ca JSON (pentru aplicația mobilă).
-            $json_data = file_get_contents('php://input');
-            $decoded_data = json_decode($json_data, true);
-            // Ne asigurăm că decodarea a funcționat înainte de a suprascrie $data.
+            // Dacă nu este POST, trimitem o eroare
+            http_response_code(405); // Method Not Allowed
+            echo json_encode(["error" => "Only POST method is accepted."]);
+        }
+    }
+
+    public static function login() {
+        // Folosim conexiunea globală, la fel ca în codul tău
+        global $conn; 
+
+        // --- LOGICĂ ROBUSTĂ PENTRU A CITI DATELE DE INTRARE ---
+        $input = [];
+        // Prioritizăm $_POST (pentru aplicația web)
+        if (!empty($_POST)) {
+            $input = $_POST;
+        } else {
+            // Dacă $_POST este gol, citim JSON (pentru aplicația mobilă)
+            $json_input = file_get_contents('php://input');
+            $decoded_input = json_decode($json_input, true);
             if (json_last_error() === JSON_ERROR_NONE) {
-                $data = $decoded_data;
+                $input = $decoded_input;
             }
         }
 
-        // Verificăm dacă email-ul și parola au fost furnizate
-        if (!isset($data['email']) || !isset($data['password'])) {
-            http_response_code(400); // Bad Request
-            echo json_encode(['error' => 'Email and password are required.']);
+        // Verificăm dacă am primit datele necesare
+        if ((!isset($input['username']) && !isset($input['email'])) || !isset($input['password'])) {
+            http_response_code(400);
+            echo json_encode(["error" => "Username/Email and password are required."]);
             return;
         }
+
+        $password = $input['password'];
+
+        // --- INTEROGARE SECURIZATĂ CU PREPARED STATEMENTS ---
+        // Aceasta previne atacurile de tip SQL Injection.
         
-        $email = $data['email'];
-        $password = $data['password'];
+        // Stabilim dacă login-ul se face cu username sau email
+        if (isset($input['username'])) {
+            $login_identifier = $input['username'];
+            $stmt = $conn->prepare("SELECT * FROM users WHERE username = ?");
+        } else {
+            $login_identifier = $input['email'];
+            $stmt = $conn->prepare("SELECT * FROM users WHERE email = ?");
+        }
 
-        try {
-            $db = getDB();
-            $stmt = $db->prepare("SELECT * FROM users WHERE email = ?");
-            $stmt->execute([$email]);
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($stmt === false) {
+            http_response_code(500);
+            echo json_encode(["error" => "Failed to prepare statement: " . $conn->error]);
+            return;
+        }
 
-            if ($user && password_verify($password, $user['password'])) {
-                // Datele sunt corecte, generăm token-ul JWT
-                
-                // ATENȚIE: Aceste valori trebuie să fie definite în config.php
-                $secret_key = defined('JWT_SECRET') ? JWT_SECRET : "your_default_secret_key";
-                $issuer_claim = "YOUR_ISSUER"; // ex: "hapible.ro"
-                $audience_claim = "YOUR_AUDIENCE"; // ex: "hapible.ro"
-                $issuedat_claim = time();
-                $expire_claim = $issuedat_claim + (3600 * 24); // Token valabil 24 de ore
+        $stmt->bind_param("s", $login_identifier);
+        $stmt->execute();
+        $result = $stmt->get_result();
 
-                $token_payload = [
-                    "iss" => $issuer_claim,
-                    "aud" => $audience_claim,
-                    "iat" => $issuedat_claim,
-                    "exp" => $expire_claim,
-                    "data" => [
-                        "id" => $user['id'],
-                        "email" => $user['email'],
-                        "role" => $user['role']
-                    ]
-                ];
+        if ($result->num_rows > 0) {
+            $user = $result->fetch_assoc();
 
-                $jwt = JWT::encode($token_payload, $secret_key, 'HS256');
-
+            // !!! AVERTISMENT IMPORTANT DE SECURITATE !!!
+            // Codul tău original compară parolele direct. Asta înseamnă că parolele
+            // sunt stocate în baza de date ca text clar, ceea ce este extrem de periculos.
+            // Pentru a menține compatibilitatea, am păstrat temporar această logică.
+            // Este VITAL să treci la `password_hash()` și `password_verify()` cât mai curând posibil.
+            
+            if ($password === $user['password']) { // Această linie este INSECURĂ!
                 // Eliminăm parola din răspuns pentru securitate
                 unset($user['password']);
 
+                // Generăm token-ul simplu, la fel ca în codul tău
+                $token = base64_encode($user["id"] . ":" . $user["role"]);
+                
                 http_response_code(200);
                 echo json_encode([
                     "message" => "Successful login.",
-                    "token" => $jwt,
-                    "user" => $user
+                    "token" => $token,
+                    "user" => $user // Trimitem și datele utilizatorului
                 ]);
 
             } else {
-                // Credențiale invalide
                 http_response_code(401);
-                echo json_encode(["error" => "Invalid credentials."]);
+                echo json_encode(["error" => "Invalid credentials"]);
             }
-        } catch (Exception $e) {
-            // Orice altă eroare (ex: problemă cu baza de date)
-            http_response_code(500);
-            echo json_encode([
-                "error" => "An internal server error occurred.",
-                "details" => $e->getMessage() // Afișează detalii doar în modul de dezvoltare
-            ]);
+        } else {
+            http_response_code(401);
+            echo json_encode(["error" => "Invalid credentials"]);
         }
+        $stmt->close();
     }
 }
