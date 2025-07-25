@@ -1,4 +1,10 @@
 <?php
+
+// Afișează erorile pentru a ajuta la depanare
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 // Folosim calea corectă, cu forward slashes
 require_once __DIR__ . '/../../config/config.php';
 
@@ -31,26 +37,23 @@ class RegisterController {
 
         // --- VALIDARE ȘI MAPARE CÂMPURI ---
         // Adaptăm câmpurile pentru a fi compatibile cu ambele aplicații
-
-        // Pentru web: 'name', pentru mobil: 'first_name' + 'last_name'
-        $first_name = $input['first_name'] ?? '';
-        $last_name = $input['last_name'] ?? '';
-        $name = $input['name'] ?? trim($first_name . ' ' . $last_name);
-
+        
+        // Pentru web: 'name'. Pentru mobil: 'first_name' + 'last_name'
+        $name = $input['name'] ?? trim(($input['first_name'] ?? '') . ' ' . ($input['last_name'] ?? ''));
+        
         $email = $input['email'] ?? null;
         $password = $input['password'] ?? null;
         $role = $input['role'] ?? null;
         
-        // Pentru web: 'username', pentru mobil folosim email-ul ca username
+        // Pentru web: 'username'. Pentru mobil folosim email-ul ca username
         $username = $input['username'] ?? $email;
         
         $company_name = $input['company_name'] ?? '';
 
-
         // Verificăm dacă datele esențiale există
-        if (empty($name) || empty($email) || empty($password) || empty($role)) {
+        if (empty($name) || empty($username) || empty($email) || empty($password) || empty($role)) {
             http_response_code(400);
-            echo json_encode(["error" => "All required fields (name, email, password, role) must be provided."]);
+            echo json_encode(["error" => "All required fields (name/username, email, password, role) must be provided."]);
             return;
         }
 
@@ -72,9 +75,9 @@ class RegisterController {
             }
             $stmt->close();
 
-            // Inserăm noul utilizator folosind PREPARED STATEMENTS pentru securitate
-            $stmt = $conn->prepare("INSERT INTO users (name, username, first_name, last_name, email, password, role, company_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("ssssssss", $name, $username, $first_name, $last_name, $email, $hashed_password, $role, $company_name);
+            // CORECTAT: Inserăm noul utilizator folosind doar coloanele existente
+            $stmt = $conn->prepare("INSERT INTO users (name, username, email, password, role, company_name) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("ssssss", $name, $username, $email, $hashed_password, $role, $company_name);
             
             if ($stmt->execute()) {
                 http_response_code(201); // Created
