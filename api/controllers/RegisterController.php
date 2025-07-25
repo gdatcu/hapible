@@ -1,34 +1,93 @@
 <?php
-require __DIR__ . '/../../config/config.php'; // Database connection
+// Folosim calea corectă, cu forward slashes
+require_once __DIR__ . '/../../config/config.php';
 
 class RegisterController {
     public static function handle() {
-        if ($_SERVER["REQUEST_METHOD"] === "POST") {
+        if ($_SERVER["REQUEST_METHOD"] == "POST") {
             self::register();
         } else {
-            echo json_encode(["error" => "Invalid request"]);
+            http_response_code(405); // Method Not Allowed
+            echo json_encode(["error" => "Only POST method is accepted."]);
         }
     }
 
     public static function register() {
         global $conn;
 
-		$name = $_POST['name'];
-        $username = $_POST['username'];
-        $password = $_POST['password'];  // ❌ Plaintext, no hashing
-        $email = $_POST['email'];
-        $role = $_POST['role'];  // ❌ User can select ANY role, including "admin"
-        $company = $_POST['company_name'] ?? '';
-
-        // ❌ No input validation or sanitization (SQLi risk if used unsafely)
-        $sql = "INSERT INTO users (name, username, password, email, role, company_name) 
-                VALUES ('$name', '$username', '$password', '$email', '$role','$company')";
-
-        if ($conn->query($sql) === TRUE) {
-            echo json_encode(["success" => "User registered"]);
+        // --- LOGICĂ ROBUSTĂ PENTRU A CITI DATELE DE INTRARE ---
+        $input = [];
+        // Prioritizăm $_POST (pentru aplicația web originală)
+        if (!empty($_POST)) {
+            $input = $_POST;
         } else {
-            echo json_encode(["error" => "Failed to register"]);
+            // Dacă $_POST este gol, citim JSON (pentru aplicația mobilă)
+            $json_input = file_get_contents('php://input');
+            $decoded_input = json_decode($json_input, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $input = $decoded_input;
+            }
+        }
+
+        // --- VALIDARE ȘI MAPARE CÂMPURI ---
+        // Adaptăm câmpurile pentru a fi compatibile cu ambele aplicații
+
+        // Pentru web: 'name', pentru mobil: 'first_name' + 'last_name'
+        $first_name = $input['first_name'] ?? '';
+        $last_name = $input['last_name'] ?? '';
+        $name = $input['name'] ?? trim($first_name . ' ' . $last_name);
+
+        $email = $input['email'] ?? null;
+        $password = $input['password'] ?? null;
+        $role = $input['role'] ?? null;
+        
+        // Pentru web: 'username', pentru mobil folosim email-ul ca username
+        $username = $input['username'] ?? $email;
+        
+        $company_name = $input['company_name'] ?? '';
+
+
+        // Verificăm dacă datele esențiale există
+        if (empty($name) || empty($email) || empty($password) || empty($role)) {
+            http_response_code(400);
+            echo json_encode(["error" => "All required fields (name, email, password, role) must be provided."]);
+            return;
+        }
+
+        // --- SECURITATE: HASH-UIREA PAROLEI ---
+        $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+
+        try {
+            // Verificăm dacă email-ul sau username-ul există deja
+            $stmt = $conn->prepare("SELECT id FROM users WHERE email = ? OR username = ?");
+            $stmt->bind_param("ss", $email, $username);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            if ($result->num_rows > 0) {
+                http_response_code(409); // Conflict
+                echo json_encode(["error" => "An account with this email or username already exists."]);
+                $stmt->close();
+                return;
+            }
+            $stmt->close();
+
+            // Inserăm noul utilizator folosind PREPARED STATEMENTS pentru securitate
+            $stmt = $conn->prepare("INSERT INTO users (name, username, first_name, last_name, email, password, role, company_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("ssssssss", $name, $username, $first_name, $last_name, $email, $hashed_password, $role, $company_name);
+            
+            if ($stmt->execute()) {
+                http_response_code(201); // Created
+                echo json_encode(["message" => "Account created successfully! You can now log in."]);
+            } else {
+                http_response_code(500);
+                echo json_encode(["error" => "Failed to create account: " . $stmt->error]);
+            }
+            $stmt->close();
+
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(["error" => "An internal server error occurred.", "details" => $e->getMessage()]);
         }
     }
 }
-?>
