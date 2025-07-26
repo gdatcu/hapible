@@ -30,7 +30,6 @@ class AuthController {
         // --- PASUL 2: Validăm datele de intrare ---
         $password_from_user = $input['password'] ?? null;
         
-        // Stabilim dacă login-ul se face cu username (web) sau email (mobil)
         if (isset($input['username'])) {
             $login_identifier = $input['username'];
             $sql_column = "username";
@@ -63,10 +62,8 @@ class AuthController {
 
                 // --- PASUL 4: Verificare dublă a parolei (pentru utilizatori vechi și noi) ---
                 if (preg_match('/^\$2y\$/', $password_from_db)) {
-                    // Parola este hash-uită (utilizator nou) -> folosim password_verify
                     $is_password_correct = password_verify($password_from_user, $password_from_db);
                 } else {
-                    // Parola este text simplu (utilizator vechi) -> comparăm direct
                     $is_password_correct = ($password_from_user === $password_from_db);
                 }
 
@@ -78,12 +75,12 @@ class AuthController {
                     $token = base64_encode($user["id"] . ":" . $user["role"]);
                     
                     http_response_code(200);
-                    // Trimitem un răspuns complet, util pentru ambele aplicații
+                    // --- CORECTAT: Trimitem un răspuns complet, care include OBIECTUL USER ---
                     echo json_encode([
                         "message" => "Successful login.",
                         "token" => $token,
-                        "user" => $user,
-                        "api_key" => $user["api_key"] ?? null // Păstrăm api_key pentru compatibilitate
+                        "user" => $user, // Această linie este esențială pentru aplicația mobilă
+                        "api_key" => $user["api_key"] ?? null
                     ]);
 
                 } else {
