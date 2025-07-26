@@ -1,9 +1,4 @@
 <?php
-// Afișează erorile pentru a ajuta la depanare
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 // Folosim calea corectă, cu forward slashes
 require_once __DIR__ . '/../../config/config.php';
 
@@ -20,11 +15,13 @@ class RegisterController {
     public static function register() {
         global $conn;
 
-        // --- LOGICĂ ROBUSTĂ PENTRU A CITI DATELE DE INTRARE ---
+        // --- PASUL 1: Citim datele, indiferent de sursă (Web sau Mobil) ---
         $input = [];
         if (!empty($_POST)) {
+            // Dacă vin de la aplicația web, folosim $_POST
             $input = $_POST;
         } else {
+            // Dacă vin de la aplicația mobilă, citim JSON
             $json_input = file_get_contents('php://input');
             $decoded_input = json_decode($json_input, true);
             if (json_last_error() === JSON_ERROR_NONE) {
@@ -32,48 +29,42 @@ class RegisterController {
             }
         }
 
-        // --- VALIDARE ȘI MAPARE CÂMPURI ---
+        // --- PASUL 2: Adaptăm câmpurile pentru ambele aplicații ---
+        // Web trimite 'name', Mobil trimite 'first_name' și 'last_name'
         $name = $input['name'] ?? trim(($input['first_name'] ?? '') . ' ' . ($input['last_name'] ?? ''));
+        
+        // Web trimite 'username', Mobil folosește email-ul ca username
+        $username = $input['username'] ?? ($input['email'] ?? null);
+        
         $email = $input['email'] ?? null;
         $password = $input['password'] ?? null;
         $role = $input['role'] ?? null;
-        $username = $input['username'] ?? $email;
         $company_name = $input['company_name'] ?? '';
 
+        // Verificăm dacă datele esențiale există
         if (empty($name) || empty($username) || empty($email) || empty($password) || empty($role)) {
             http_response_code(400);
-            echo json_encode(["error" => "All required fields (name/username, email, password, role) must be provided."]);
+            echo json_encode(["error" => "All required fields must be provided."]);
             return;
         }
 
+        // --- PASUL 3: ÎMBUNĂTĂȚIRE DE SECURITATE (HASH-UIREA PAROLEI) ---
+        // În loc să salvăm parola ca text, o salvăm într-un format securizat.
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
         try {
-            // Verificăm dacă email-ul sau username-ul există deja
-            $stmt = $conn->prepare("SELECT id FROM users WHERE email = ? OR username = ?");
-            $stmt->bind_param("ss", $email, $username);
-            $stmt->execute();
-            $result = $stmt->get_result();
-
-            if ($result->num_rows > 0) {
-                http_response_code(409); // Conflict
-                echo json_encode(["error" => "An account with this email or username already exists."]);
-                $stmt->close();
-                return;
-            }
-            $stmt->close();
-
-            // Inserăm noul utilizator
-            $stmt = $conn->prepare("INSERT INTO users (name, username, email, password, role, company_name) VALUES (?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("ssssss", $name, $username, $email, $hashed_password, $role, $company_name);
+            // --- PASUL 4: ÎMBUNĂTĂȚIRE DE SECURITATE (PREPARED STATEMENTS) ---
+            // Prevenim atacurile de tip SQL Injection.
+            $stmt = $conn->prepare("INSERT INTO users (name, username, password, email, role, company_name) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("ssssss", $name, $username, $hashed_password, $email, $role, $company_name);
             
             if ($stmt->execute()) {
                 http_response_code(201); // Created
-                // CORECTAT: Trimitem un răspuns cu cheia "success" pentru compatibilitate cu aplicația web
-                echo json_encode(["success" => "User registered successfully!"]);
+                // Păstrăm răspunsul original pentru compatibilitate cu aplicația web
+                echo json_encode(["success" => "User registered"]);
             } else {
                 http_response_code(500);
-                echo json_encode(["error" => "Failed to create account: " . $stmt->error]);
+                echo json_encode(["error" => "Failed to register: " . $stmt->error]);
             }
             $stmt->close();
 
