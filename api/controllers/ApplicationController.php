@@ -78,18 +78,16 @@ class ApplicationController {
     public static function getUserApplications() {
         global $conn;
 
-        // Folosim funcția getDecodedToken pentru a obține întregul token decodificat
-        $decoded_token = AuthMiddleware::getDecodedToken();
+        // CORECTAT: Folosim logica existentă din AuthMiddleware pentru a valida și a obține ID-ul.
+        $user_id = AuthMiddleware::getUserId();
         
-        // Verificăm dacă token-ul este valid și dacă conține structura `data->id`
-        if (!$decoded_token || !isset($decoded_token->data) || !isset($decoded_token->data->id)) {
+        if (!$user_id) {
+            // AuthMiddleware va fi trimis deja un răspuns de eroare 401,
+            // dar adăugăm o verificare suplimentară pentru siguranță.
             http_response_code(401);
-            echo json_encode(["error" => "Unauthorized or invalid token structure."]);
+            echo json_encode(["error" => "Unauthorized. Invalid or missing token."]);
             return;
         }
-        
-        // CORECTAT: Extragem ID-ul din calea corectă: $decoded_token->data->id
-        $user_id = $decoded_token->data->id;
 
         try {
             $stmt = $conn->prepare("
