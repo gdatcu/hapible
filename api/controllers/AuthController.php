@@ -15,19 +15,17 @@ class AuthController {
     public static function login() {
         global $conn;
 
-        // --- PASUL 1: Citim datele, indiferent de sursă (Web sau Mobil) ---
         $input = [];
         if (!empty($_POST)) {
-            $input = $_POST; // Pentru aplicația web
+            $input = $_POST;
         } else {
-            $json_input = file_get_contents('php://input'); // Pentru aplicația mobilă
+            $json_input = file_get_contents('php://input');
             $decoded_input = json_decode($json_input, true);
             if (json_last_error() === JSON_ERROR_NONE) {
                 $input = $decoded_input;
             }
         }
 
-        // --- PASUL 2: Validăm datele de intrare ---
         $password_from_user = $input['password'] ?? null;
         
         if (isset($input['username'])) {
@@ -49,7 +47,6 @@ class AuthController {
         }
 
         try {
-            // --- PASUL 3: Interogare securizată (Prepared Statement) ---
             $stmt = $conn->prepare("SELECT * FROM users WHERE $sql_column = ?");
             $stmt->bind_param("s", $login_identifier);
             $stmt->execute();
@@ -60,7 +57,6 @@ class AuthController {
                 $password_from_db = $user['password'];
                 $is_password_correct = false;
 
-                // --- PASUL 4: Verificare dublă a parolei (pentru utilizatori vechi și noi) ---
                 if (preg_match('/^\$2y\$/', $password_from_db)) {
                     $is_password_correct = password_verify($password_from_user, $password_from_db);
                 } else {
@@ -68,18 +64,20 @@ class AuthController {
                 }
 
                 if ($is_password_correct) {
-                    // Eliminăm parola din răspuns pentru securitate
-                    unset($user['password']);
+                    // --- MĂSURĂ DE SIGURANȚĂ ---
+                    // Verificăm dacă rolul este gol/null și setăm o valoare implicită.
+                    if (empty($user['role'])) {
+                        $user['role'] = 'candidate'; // Valoare implicită sigură
+                    }
 
-                    // Generăm token-ul simplu, la fel ca în codul tău
+                    unset($user['password']);
                     $token = base64_encode($user["id"] . ":" . $user["role"]);
                     
                     http_response_code(200);
-                    // --- CORECTAT: Trimitem un răspuns complet, care include OBIECTUL USER ---
                     echo json_encode([
                         "message" => "Successful login.",
                         "token" => $token,
-                        "user" => $user, // Această linie este esențială pentru aplicația mobilă
+                        "user" => $user, // Garantăm că obiectul 'user' este trimis
                         "api_key" => $user["api_key"] ?? null
                     ]);
 
@@ -99,5 +97,3 @@ class AuthController {
         }
     }
 }
-
-?>
