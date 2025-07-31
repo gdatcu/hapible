@@ -73,20 +73,16 @@ class ApplicationController {
     public static function getUserApplications() {
         global $conn;
 
-        // --- CORECTAT: Logică dublă pentru compatibilitate ---
         $user_id = null;
 
-        // Metoda 1: Încercăm să obținem ID-ul din token (pentru aplicația mobilă)
         $user_id_from_token = AuthMiddleware::getUserId();
         if ($user_id_from_token) {
             $user_id = $user_id_from_token;
         } 
-        // Metoda 2: Dacă nu există token, verificăm dacă ID-ul a fost trimis în URL (pentru aplicația web)
         elseif (isset($_GET['user_id'])) {
             $user_id = $_GET['user_id'];
         }
 
-        // Dacă nu am găsit un ID valid prin nicio metodă, trimitem o eroare.
         if (!$user_id) {
             http_response_code(401);
             echo json_encode(["error" => "Unauthorized. Invalid or missing token/user_id."]);
@@ -94,14 +90,17 @@ class ApplicationController {
         }
 
         try {
-            // --- CORECTAT: Am refăcut interogarea SQL pentru a se potrivi cu structura bazei de date ---
+            // --- CORECTAT: Interogare SQL cu alias-uri pentru compatibilitate maximă ---
             $stmt = $conn->prepare("
                 SELECT 
-                    j.title, 
-                    u.company_name, 
+                    a.id,
                     a.status, 
                     a.created_at,
-                    a.id
+                    a.created_at AS applied_on, -- Alias pentru aplicația web
+                    j.id AS job_id,             -- Alias pentru aplicația web
+                    j.title, 
+                    u.company_name,
+                    u.company_name AS company   -- Alias pentru aplicația web
                 FROM applications a
                 JOIN jobs j ON a.job_id = j.id
                 JOIN users u ON j.employer_id = u.id
@@ -127,4 +126,3 @@ class ApplicationController {
         }
     }
 }
-?>
