@@ -103,7 +103,7 @@ class ApplicationController {
                     u.company_name AS company   -- Alias pentru aplicația web
                 FROM applications a
                 JOIN jobs j ON a.job_id = j.id
-                JOIN users u ON j.employer_id = u.id
+                LEFT JOIN users u ON j.employer_id = u.id
                 WHERE a.user_id = ?
                 ORDER BY a.created_at DESC
             ");
@@ -113,6 +113,9 @@ class ApplicationController {
 
             $applications = [];
             while ($row = $result->fetch_assoc()) {
+                // Măsură de siguranță pentru a preveni valorile null care devin "undefined" în JS
+                $row['company_name'] = $row['company_name'] ?? 'N/A';
+                $row['company'] = $row['company'] ?? 'N/A';
                 $applications[] = $row;
             }
 
@@ -126,3 +129,4 @@ class ApplicationController {
         }
     }
 }
+?>
