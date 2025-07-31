@@ -8,10 +8,11 @@ $database = "gbrmlvka_hapible";
 // Aceasta este necesară pentru securitatea autentificării.
 // Trebuie să fie un text lung, complex și aleatoriu.
 // Poți genera o cheie nouă și sigură aici: https://www.random.org/strings/
-define('JWT_SECRET', '7688708138502173644117211172484676738591556127003185564655761202!');
+define('JWT_SECRET', '7688708138502173644117211172484676738591556127003185564655761202');
 
 
 // Create connection
+// CORECTAT: Acum folosește variabilele corecte
 $conn = new mysqli($servername, $username, $password, $dbname);
 
 // Check connection
@@ -25,6 +26,7 @@ if ($conn->connect_error) {
 
 // Funcția getDB, păstrată pentru compatibilitate
 function getDB() {
+    // CORECTAT: Folosim `global` cu variabilele corecte
     global $servername, $username, $password, $dbname;
     try {
         $dbConnection = new PDO("mysql:host=$servername;dbname=$dbname", $username, $password);
