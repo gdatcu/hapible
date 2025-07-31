@@ -78,14 +78,16 @@ class ApplicationController {
     public static function getUserApplications() {
         global $conn;
 
-        // CORECTAT: Apelăm funcția corectă, `getDecodedToken()`, din fișierul tău AuthMiddleware.php
-        $decoded_token = AuthMiddleware::getDecodedToken();
-        if (!$decoded_token) {
+        // CORECTAT: Folosim funcția `getUserId()` care există în middleware-ul tău
+        // pentru a extrage direct ID-ul utilizatorului.
+        $user_id = AuthMiddleware::getUserId();
+        
+        if (!$user_id) {
             // Middleware-ul trimite deja eroarea, deci oprim execuția
+            http_response_code(401);
+            echo json_encode(["error" => "Unauthorized or invalid token."]);
             return;
         }
-        // Accesăm datele utilizatorului din proprietatea 'data' a token-ului decodificat
-        $user_id = $decoded_token->data->id;
 
         try {
             $stmt = $conn->prepare("
