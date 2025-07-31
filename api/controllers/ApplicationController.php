@@ -97,7 +97,7 @@ class ApplicationController {
                 JOIN jobs j ON a.job_id = j.id
                 JOIN users u ON j.employer_id = u.id
                 WHERE a.user_id = ?
-                ORDER BY a.applied_at DESC
+                ORDER BY a.created_at DESC
             ");
             $stmt->bind_param("i", $user_id);
             $stmt->execute();
