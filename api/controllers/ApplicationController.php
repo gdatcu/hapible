@@ -20,7 +20,6 @@ class ApplicationController {
     public static function apply() {
         global $conn;
 
-        // --- PASUL 1: Validăm datele primite ---
         if (!isset($_POST['user_id']) || !isset($_POST['job_id']) || !isset($_FILES['resume'])) {
             http_response_code(400);
             echo json_encode(["error" => "Missing user_id, job_id, or resume file."]);
@@ -37,7 +36,6 @@ class ApplicationController {
             return;
         }
 
-        // --- PASUL 2: Procesăm fișierul încărcat în siguranță ---
         $upload_dir = __DIR__ . '/../../uploads/';
         $file_extension = pathinfo($resume['name'], PATHINFO_EXTENSION);
         $safe_filename = uniqid('resume_', true) . '.' . $file_extension;
@@ -52,7 +50,6 @@ class ApplicationController {
         $db_resume_path = 'uploads/' . $safe_filename;
 
         try {
-            // --- PASUL 3: Inserăm datele în baza de date în mod securizat ---
             $stmt = $conn->prepare("INSERT INTO applications (user_id, job_id, resume) VALUES (?, ?, ?)");
             $stmt->bind_param("iis", $user_id, $job_id, $db_resume_path);
 
@@ -78,27 +75,27 @@ class ApplicationController {
     public static function getUserApplications() {
         global $conn;
 
-        // CORECTAT: Folosim logica existentă din AuthMiddleware pentru a valida și a obține ID-ul.
         $user_id = AuthMiddleware::getUserId();
         
         if (!$user_id) {
-            // AuthMiddleware va fi trimis deja un răspuns de eroare 401,
-            // dar adăugăm o verificare suplimentară pentru siguranță.
             http_response_code(401);
             echo json_encode(["error" => "Unauthorized. Invalid or missing token."]);
             return;
         }
 
         try {
+            // --- CORECTAT: Am modificat condiția de JOIN ---
+            // Acum folosim `j.employer_id = u.id` pentru a lega corect job-ul de angajator.
             $stmt = $conn->prepare("
                 SELECT 
                     j.title, 
-                    j.company_name, 
+                    u.company_name, 
                     a.status, 
                     a.applied_at,
                     a.id
                 FROM applications a
                 JOIN jobs j ON a.job_id = j.id
+                JOIN users u ON j.employer_id = u.id
                 WHERE a.user_id = ?
                 ORDER BY a.applied_at DESC
             ");
@@ -121,4 +118,3 @@ class ApplicationController {
         }
     }
 }
-?>
