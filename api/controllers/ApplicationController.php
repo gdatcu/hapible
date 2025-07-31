@@ -74,20 +74,20 @@ class ApplicationController {
         }
     }
 
-    // --- NOU: Funcția pentru a prelua aplicațiile unui utilizator ---
+    // --- Funcția pentru a prelua aplicațiile unui utilizator ---
     public static function getUserApplications() {
         global $conn;
 
-        // Verificăm token-ul pentru a ne asigura că doar utilizatorul autentificat
-        // își poate vedea propriile aplicații.
-        $user_data = AuthMiddleware::verifyToken();
-        if (!$user_data) {
-            return; // Middleware-ul trimite deja eroarea
+        // CORECTAT: Apelăm funcția corectă, `getDecodedToken()`, din fișierul tău AuthMiddleware.php
+        $decoded_token = AuthMiddleware::getDecodedToken();
+        if (!$decoded_token) {
+            // Middleware-ul trimite deja eroarea, deci oprim execuția
+            return;
         }
-        $user_id = $user_data->id;
+        // Accesăm datele utilizatorului din proprietatea 'data' a token-ului decodificat
+        $user_id = $decoded_token->data->id;
 
         try {
-            // Interogare complexă (JOIN) pentru a prelua detaliile jobului împreună cu statusul aplicației
             $stmt = $conn->prepare("
                 SELECT 
                     j.title, 
@@ -119,4 +119,3 @@ class ApplicationController {
         }
     }
 }
-?>
