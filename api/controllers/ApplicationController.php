@@ -1,12 +1,11 @@
 <?php
 // Folosim calea corectă, cu forward slashes
 require_once __DIR__ . '/../../config/config.php';
-// Includem middleware-ul de autentificare, esențial pentru a prelua aplicațiile utilizatorului
+// Includem middleware-ul de autentificare
 require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
 
 class ApplicationController {
     public static function handle() {
-        // Modificăm logica pentru a gestiona atât POST, cât și GET
         if ($_SERVER["REQUEST_METHOD"] === "POST") {
             self::apply();
         } elseif ($_SERVER["REQUEST_METHOD"] === "GET") {
@@ -71,21 +70,31 @@ class ApplicationController {
         }
     }
 
-    // --- Funcția pentru a prelua aplicațiile unui utilizator ---
     public static function getUserApplications() {
         global $conn;
 
-        $user_id = AuthMiddleware::getUserId();
-        
+        // --- CORECTAT: Logică dublă pentru compatibilitate ---
+        $user_id = null;
+
+        // Metoda 1: Încercăm să obținem ID-ul din token (pentru aplicația mobilă)
+        $user_id_from_token = AuthMiddleware::getUserId();
+        if ($user_id_from_token) {
+            $user_id = $user_id_from_token;
+        } 
+        // Metoda 2: Dacă nu există token, verificăm dacă ID-ul a fost trimis în URL (pentru aplicația web)
+        elseif (isset($_GET['user_id'])) {
+            $user_id = $_GET['user_id'];
+        }
+
+        // Dacă nu am găsit un ID valid prin nicio metodă, trimitem o eroare.
         if (!$user_id) {
             http_response_code(401);
-            echo json_encode(["error" => "Unauthorized. Invalid or missing token."]);
+            echo json_encode(["error" => "Unauthorized. Invalid or missing token/user_id."]);
             return;
         }
 
         try {
-            // --- CORECTAT: Am modificat condiția de JOIN ---
-            // Acum folosim `j.employer_id = u.id` pentru a lega corect job-ul de angajator.
+            // --- CORECTAT: Am refăcut interogarea SQL pentru a se potrivi cu structura bazei de date ---
             $stmt = $conn->prepare("
                 SELECT 
                     j.title, 
@@ -118,3 +127,4 @@ class ApplicationController {
         }
     }
 }
+?>
