@@ -53,7 +53,7 @@ class ApplicationController {
 
         try {
             // --- PASUL 3: Inserăm datele în baza de date în mod securizat ---
-            $stmt = $conn->prepare("INSERT INTO applications (user_id, job_id, resume_path) VALUES (?, ?, ?)");
+            $stmt = $conn->prepare("INSERT INTO applications (user_id, job_id, resume) VALUES (?, ?, ?)");
             $stmt->bind_param("iis", $user_id, $job_id, $db_resume_path);
 
             if ($stmt->execute()) {
