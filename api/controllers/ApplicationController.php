@@ -1,11 +1,16 @@
 <?php
 // Folosim calea corectă, cu forward slashes
 require_once __DIR__ . '/../../config/config.php';
+// Includem middleware-ul de autentificare, esențial pentru a prelua aplicațiile utilizatorului
+require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
 
 class ApplicationController {
     public static function handle() {
+        // Modificăm logica pentru a gestiona atât POST, cât și GET
         if ($_SERVER["REQUEST_METHOD"] === "POST") {
             self::apply();
+        } elseif ($_SERVER["REQUEST_METHOD"] === "GET") {
+            self::getUserApplications();
         } else {
             http_response_code(405);
             echo json_encode(["error" => "Invalid request method."]);
@@ -26,7 +31,6 @@ class ApplicationController {
         $job_id = $_POST['job_id'];
         $resume = $_FILES['resume'];
 
-        // Verificăm dacă a existat vreo eroare la încărcare
         if ($resume['error'] !== UPLOAD_ERR_OK) {
             http_response_code(400);
             echo json_encode(["error" => "Error uploading file. Code: " . $resume['error']]);
@@ -35,29 +39,25 @@ class ApplicationController {
 
         // --- PASUL 2: Procesăm fișierul încărcat în siguranță ---
         $upload_dir = __DIR__ . '/../../uploads/';
-        // Creăm un nume unic pentru fișier pentru a preveni suprascrierea și conflictele
         $file_extension = pathinfo($resume['name'], PATHINFO_EXTENSION);
         $safe_filename = uniqid('resume_', true) . '.' . $file_extension;
         $resume_path = $upload_dir . $safe_filename;
 
-        // Mutăm fișierul din locația temporară în cea finală
         if (!move_uploaded_file($resume['tmp_name'], $resume_path)) {
             http_response_code(500);
             echo json_encode(["error" => "Failed to save the uploaded file."]);
             return;
         }
 
-        // Salvăm calea relativă la rădăcina proiectului în baza de date
         $db_resume_path = 'uploads/' . $safe_filename;
 
         try {
             // --- PASUL 3: Inserăm datele în baza de date în mod securizat ---
-            $stmt = $conn->prepare("INSERT INTO applications (user_id, job_id, resume) VALUES (?, ?, ?)");
+            $stmt = $conn->prepare("INSERT INTO applications (user_id, job_id, resume_path) VALUES (?, ?, ?)");
             $stmt->bind_param("iis", $user_id, $job_id, $db_resume_path);
 
             if ($stmt->execute()) {
                 http_response_code(201); // Created
-                // Păstrăm răspunsul original pentru compatibilitate
                 echo json_encode([
                     "success" => "Application submitted",
                     "resume" => $db_resume_path
@@ -74,8 +74,49 @@ class ApplicationController {
         }
     }
 
-    public static function getJobs() {
-        // Această funcție poate fi implementată ulterior
-        echo json_encode(["message" => "Endpoint for getJobs is available but not implemented."]);
+    // --- NOU: Funcția pentru a prelua aplicațiile unui utilizator ---
+    public static function getUserApplications() {
+        global $conn;
+
+        // Verificăm token-ul pentru a ne asigura că doar utilizatorul autentificat
+        // își poate vedea propriile aplicații.
+        $user_data = AuthMiddleware::verifyToken();
+        if (!$user_data) {
+            return; // Middleware-ul trimite deja eroarea
+        }
+        $user_id = $user_data->id;
+
+        try {
+            // Interogare complexă (JOIN) pentru a prelua detaliile jobului împreună cu statusul aplicației
+            $stmt = $conn->prepare("
+                SELECT 
+                    j.title, 
+                    j.company_name, 
+                    a.status, 
+                    a.applied_at,
+                    a.id
+                FROM applications a
+                JOIN jobs j ON a.job_id = j.id
+                WHERE a.user_id = ?
+                ORDER BY a.applied_at DESC
+            ");
+            $stmt->bind_param("i", $user_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            $applications = [];
+            while ($row = $result->fetch_assoc()) {
+                $applications[] = $row;
+            }
+
+            http_response_code(200);
+            echo json_encode($applications);
+            $stmt->close();
+
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(["error" => "An internal server error occurred.", "details" => $e->getMessage()]);
+        }
     }
 }
+?>
