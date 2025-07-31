@@ -91,7 +91,7 @@ class ApplicationController {
                     j.title, 
                     u.company_name, 
                     a.status, 
-                    a.applied_at,
+                    a.created_at,
                     a.id
                 FROM applications a
                 JOIN jobs j ON a.job_id = j.id
