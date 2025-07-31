@@ -1,12 +1,8 @@
 <?php
-require_once __DIR__ . '/../../vendor/autoload.php';
-// Includem fișierul de configurare pentru a avea acces la JWT_SECRET
-require_once __DIR__ . '/../../config/config.php';
-
-use Firebase\JWT\JWT;
-use Firebase\JWT\Key;
+// Nu mai avem nevoie de biblioteca JWT aici, deoarece token-ul este unul simplu, base64.
 
 class AuthMiddleware {
+    // Funcția pentru a prelua header-ul de autorizare rămâne la fel.
     public static function getAuthorizationHeader(){
         $headers = null;
         if (isset($_SERVER['Authorization'])) {
@@ -24,6 +20,7 @@ class AuthMiddleware {
         return $headers;
     }
     
+    // Funcția pentru a extrage token-ul din header rămâne la fel.
     public static function getBearerToken() {
         $headers = self::getAuthorizationHeader();
         if (!empty($headers)) {
@@ -34,29 +31,29 @@ class AuthMiddleware {
         return null;
     }
 
+    /**
+     * CORECTAT: Această funcție decodează acum token-ul simplu (base64)
+     * pe care îl generează AuthController.php.
+     */
     public static function getUserId() {
-        // Verificăm dacă cheia secretă este definită, pentru a preveni erorile fatale.
-        if (!defined('JWT_SECRET') || JWT_SECRET === 'inlocuieste-cu-un-text-secret-foarte-lung-si-complex!') {
-            // Nu trimitem eroare JSON aici pentru a nu expune detalii de configurare,
-            // dar returnăm null pentru ca controller-ul să știe că autentificarea a eșuat.
-            return null;
-        }
-
         $token = self::getBearerToken();
+
         if ($token) {
-            try {
-                $decoded = JWT::decode($token, new Key(JWT_SECRET, 'HS256'));
-                // Verificăm dacă structura token-ului este cea așteptată
-                if (isset($decoded->data) && isset($decoded->data->id)) {
-                    return $decoded->data->id;
-                }
-                return null; // Structură invalidă a token-ului
-            } catch (Exception $e) {
-                // Token invalid (expirat, semnatura gresita etc.)
-                return null;
+            // Decodificăm token-ul din base64.
+            $decoded_string = base64_decode($token, true);
+
+            // Verificăm dacă decodificarea a reușit și dacă formatul este corect (ex: "123:candidate")
+            if ($decoded_string !== false && strpos($decoded_string, ':') !== false) {
+                // Spargem string-ul în părți, folosind ":" ca separator.
+                $parts = explode(':', $decoded_string);
+                // ID-ul utilizatorului este prima parte.
+                $user_id = $parts[0];
+                // Returnăm ID-ul ca un număr întreg.
+                return (int)$user_id;
             }
         }
-        return null; // Nu a fost furnizat niciun token
+
+        // Dacă token-ul lipsește sau este invalid, returnăm null.
+        return null;
     }
 }
-?>
