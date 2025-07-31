@@ -19,19 +19,22 @@ if ($conn->connect_error) {
 }
 
 // Funcția getDB, păstrată pentru compatibilitate
-function getDB() {
-    // CORECTAT: Folosim `global` cu variabilele corecte
-    global $servername, $username, $password, $dbname;
-    try {
-        $dbConnection = new PDO("mysql:host=$servername;dbname=$dbname", $username, $password);
-        $dbConnection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        return $dbConnection;
-    }
-    catch (PDOException $e) {
-        http_response_code(500);
-        header('Content-Type: application/json');
-        echo json_encode(["error" => "Database connection failed: " . $e->getMessage()]);
-        exit();
+// CORECTAT: Adăugăm o verificare pentru a preveni eroarea "Cannot redeclare function"
+if (!function_exists('getDB')) {
+    function getDB() {
+        // CORECTAT: Folosim `global` cu variabilele corecte
+        global $servername, $username, $password, $dbname;
+        try {
+            $dbConnection = new PDO("mysql:host=$servername;dbname=$dbname", $username, $password);
+            $dbConnection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            return $dbConnection;
+        }
+        catch (PDOException $e) {
+            http_response_code(500);
+            header('Content-Type: application/json');
+            echo json_encode(["error" => "Database connection failed: " . $e->getMessage()]);
+            exit();
+        }
     }
 }
 ?>
