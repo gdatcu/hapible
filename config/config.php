@@ -1,15 +1,9 @@
 <?php
 $servername = "localhost";
-$user = "gbrmlvka_hapibleadm";
-$password = "qazXSW@1393";
-$database = "gbrmlvka_hapible";
-
-// --- CHEIA SECRETĂ PENTRU TOKEN-URI (ESENȚIALĂ) ---
-// Aceasta este necesară pentru securitatea autentificării.
-// Trebuie să fie un text lung, complex și aleatoriu.
-// Poți genera o cheie nouă și sigură aici: https://www.random.org/strings/
-define('JWT_SECRET', '7688708138502173644117211172484676738591556127003185564655761202');
-
+// CORECTAT: Am redenumit variabilele pentru a fi consistente
+$username = "gbrmlvka_hapibleadm"; 
+$password = "qazXSW@1393"; 
+$dbname = "gbrmlvka_hapible";
 
 // Create connection
 // CORECTAT: Acum folosește variabilele corecte
